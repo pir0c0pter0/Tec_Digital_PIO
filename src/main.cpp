@@ -276,6 +276,9 @@ extern "C" void app_main(void) {
     // Inicializa driver de filesystem LVGL
     lvgl_fs_init('A');
 
+    // Inicializa decoder PNG
+    lv_png_init();
+
     ESP_LOGI(TAG, "Display inicializado!");
 
     // Exibe splash screen
