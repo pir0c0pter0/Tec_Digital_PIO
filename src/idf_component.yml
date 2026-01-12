@@ -1,0 +1,4 @@
+## IDF Component Manager Manifest File
+dependencies:
+  ## Required for LittleFS filesystem
+  joltwallet/littlefs: "^1.14.8"
