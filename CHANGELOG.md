@@ -7,6 +7,64 @@ e este projeto adere ao [Versionamento Semantico](https://semver.org/lang/pt-BR/
 
 ---
 
+## [1.1.0] - 2026-01-13
+
+### Adicionado
+
+#### Nova Arquitetura Modular
+- Sistema de configuracao centralizado (`include/config/app_config.h`)
+- Interfaces abstratas para desacoplamento de modulos:
+  - `i_audio.h` - Interface de player de audio
+  - `i_ignicao.h` - Interface de monitoramento de ignicao
+  - `i_jornada.h` - Interface de gerenciamento de jornada
+  - `i_screen.h` - Interface de gerenciamento de telas
+- Servicos refatorados com injecao de dependencias:
+  - `IgnicaoService` - Servico de ignicao com estatisticas
+  - `JornadaService` - Servico de jornada thread-safe
+- Utilitarios centralizados:
+  - `TimeFormatter` - Formatacao de tempo thread-safe
+  - `debug_utils` - Macros de log e informacoes de heap
+- Componentes de UI reutilizaveis:
+  - `Theme` - Gerenciamento centralizado de tema
+  - `StatusBar` - Widget de barra de status modular
+- Modulo de inicializacao (`app_init`) para startup organizado
+
+#### Nova Estrutura de Diretorios
+```
+src/
+  core/        - Inicializacao e orquestracao
+  hal/         - Hardware Abstraction Layer
+  services/    - Logica de negocios
+  ui/          - Interface grafica
+  utils/       - Funcoes utilitarias
+include/
+  config/      - Configuracoes centralizadas
+  interfaces/  - Interfaces abstratas
+  core/        - Headers do core
+  services/    - Headers dos servicos
+  ui/          - Headers da UI
+  utils/       - Headers dos utilitarios
+```
+
+### Corrigido
+- Thread-safety em `formatTime()` - buffer estatico substituido por classe thread-safe
+- Potencial race condition em `getMotorista()` - adicionado mutex
+- Callback `onJornadaStateChange()` indefinido - implementacao adicionada
+
+### Modificado
+- Valores hardcoded movidos para `app_config.h`
+- CMakeLists.txt atualizado com novos diretorios de include
+- Separacao clara entre HAL, Services e UI
+- Padronizacao de nomes e convencoes de codigo
+
+### Tecnico
+- Preparacao para crescimento significativo de codigo
+- Facilita testes unitarios com interfaces abstratas
+- Melhora manutencao com modulos independentes
+- Reduz acoplamento entre componentes
+
+---
+
 ## [1.0.0] - 2026-01-13
 
 ### Adicionado

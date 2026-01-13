@@ -1,0 +1,138 @@
+/**
+ * ============================================================================
+ * INTERFACE DE TELA
+ * ============================================================================
+ *
+ * Abstrai o gerenciamento de telas/paginas da interface.
+ *
+ * ============================================================================
+ */
+
+#ifndef I_SCREEN_H
+#define I_SCREEN_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+
+/**
+ * Tipos de tela disponiveis
+ */
+enum class ScreenType : uint8_t {
+    SPLASH = 0,
+    NUMPAD,
+    JORNADA,
+    SETTINGS,
+    MAX_SCREENS
+};
+
+/**
+ * Interface abstrata para uma tela
+ */
+class IScreen {
+public:
+    virtual ~IScreen() = default;
+
+    /**
+     * Obtem o tipo da tela
+     * @return Tipo da tela
+     */
+    virtual ScreenType getType() const = 0;
+
+    /**
+     * Cria os elementos da tela
+     */
+    virtual void create() = 0;
+
+    /**
+     * Destroi os elementos da tela
+     */
+    virtual void destroy() = 0;
+
+    /**
+     * Verifica se a tela esta criada
+     * @return true se criada
+     */
+    virtual bool isCreated() const = 0;
+
+    /**
+     * Atualiza a tela (chamado periodicamente)
+     */
+    virtual void update() = 0;
+
+    /**
+     * Chamado quando a tela ganha foco
+     */
+    virtual void onEnter() = 0;
+
+    /**
+     * Chamado quando a tela perde foco
+     */
+    virtual void onExit() = 0;
+};
+
+/**
+ * Interface abstrata para gerenciador de telas
+ */
+class IScreenManager {
+public:
+    virtual ~IScreenManager() = default;
+
+    /**
+     * Inicializa o gerenciador
+     */
+    virtual void init() = 0;
+
+    /**
+     * Navega para uma tela
+     * @param type Tipo da tela destino
+     */
+    virtual void navigateTo(ScreenType type) = 0;
+
+    /**
+     * Obtem a tela atual
+     * @return Tipo da tela atual
+     */
+    virtual ScreenType getCurrentScreen() const = 0;
+
+    /**
+     * Volta para a tela anterior
+     * @return true se conseguiu voltar
+     */
+    virtual bool goBack() = 0;
+
+    /**
+     * Registra uma tela
+     * @param screen Ponteiro para a tela
+     */
+    virtual void registerScreen(IScreen* screen) = 0;
+
+    /**
+     * Atualiza todas as telas ativas
+     */
+    virtual void update() = 0;
+};
+
+extern "C" {
+#endif
+
+// Enum C compativel
+typedef enum {
+    SCREEN_TYPE_SPLASH = 0,
+    SCREEN_TYPE_NUMPAD,
+    SCREEN_TYPE_JORNADA,
+    SCREEN_TYPE_SETTINGS
+} screen_type_t;
+
+// Interface C para compatibilidade
+void screen_manager_init(void);
+void screen_navigate_to(screen_type_t type);
+screen_type_t screen_get_current(void);
+void screen_go_back(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // I_SCREEN_H

@@ -14,21 +14,47 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
-// ============================================================================
-// CONFIGURAÇÕES DE TELA
-// ============================================================================
-
-#define SCREEN_WIDTH 480
-#define SCREEN_HEIGHT 320
-#define STATUS_BAR_HEIGHT 40
-#define GRID_AREA_HEIGHT (SCREEN_HEIGHT - STATUS_BAR_HEIGHT)
+// Incluir configuracao centralizada (se disponivel)
+#if __has_include("config/app_config.h")
+    #include "config/app_config.h"
+#endif
 
 // ============================================================================
-// CONFIGURAÇÕES DA GRADE
+// CONFIGURAÇÕES DE TELA (compatibilidade com codigo legado)
 // ============================================================================
 
-#define GRID_COLS 4
-#define GRID_ROWS 3
+#ifndef DISPLAY_WIDTH
+    #define SCREEN_WIDTH 480
+#else
+    #define SCREEN_WIDTH DISPLAY_WIDTH
+#endif
+
+#ifndef DISPLAY_HEIGHT
+    #define SCREEN_HEIGHT 320
+#else
+    #define SCREEN_HEIGHT DISPLAY_HEIGHT
+#endif
+
+#ifndef STATUS_BAR_HEIGHT
+    #define STATUS_BAR_HEIGHT 40
+#endif
+
+#ifndef GRID_AREA_HEIGHT
+    #define GRID_AREA_HEIGHT (SCREEN_HEIGHT - STATUS_BAR_HEIGHT)
+#endif
+
+// ============================================================================
+// CONFIGURAÇÕES DA GRADE (compatibilidade com codigo legado)
+// ============================================================================
+
+#ifndef GRID_COLS
+    #define GRID_COLS 4
+#endif
+
+#ifndef GRID_ROWS
+    #define GRID_ROWS 3
+#endif
+
 #define BUTTON_WIDTH 110
 #define BUTTON_HEIGHT 85
 #define BUTTON_MARGIN 5
