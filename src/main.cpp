@@ -4,6 +4,7 @@
  * ============================================================================
  *
  * Sistema embarcado para monitoramento de jornada de motoristas.
+ * Utiliza ScreenManagerImpl para navegacao entre telas com animacao.
  *
  * Copyright (c) 2024-2026 Getscale Sistemas Embarcados
  * Desenvolvido por Mario Stanski Jr
@@ -32,20 +33,25 @@
 #include "utils/time_utils.h"
 #include "utils/debug_utils.h"
 
-// Display e UI (arquivos existentes)
+// Display e UI
 #include "display.h"
 #include "esp_bsp.h"
 #include "lv_port.h"
 #include "lvgl.h"
 
-// Modulos existentes (compatibilidade)
+// Audio e Splash
 #include "simple_audio_manager.h"
 #include "simple_splash.h"
-#include "button_manager.h"
-#include "numpad_example.h"
-#include "jornada_keyboard.h"
+
+// Ignicao e Filesystem
 #include "ignicao_control.h"
 #include "lvgl_fs_driver.h"
+
+// Nova arquitetura de telas
+#include "ui/screen_manager.h"
+#include "ui/widgets/status_bar.h"
+#include "ui/screens/jornada_screen.h"
+#include "ui/screens/numpad_screen.h"
 
 // ============================================================================
 // TAG DE LOG
@@ -61,17 +67,15 @@ static bool systemInitialized = false;
 static bool ignicaoLigada = false;
 static uint32_t ignicaoStartTime = 0;
 
-// Referencias externas (compatibilidade com codigo antigo)
-extern "C" {
-extern void* btnManager;
-extern void* screenManager;
+// StatusBar persistente (alocacao estatica)
+static StatusBar statusBar;
 
-void buttonManagerInit(void);
-void* buttonManagerGetInstance(void);
-void buttonManagerUpdateStatusBar(bool ignicaoOn, uint32_t tempoIgnicao, uint32_t tempoJornada, const char* msg);
-void numpadInit(void);
-void initScreenManager(void);
-}
+// Telas (alocacao estatica)
+static JornadaScreen jornadaScreen;
+static NumpadScreen numpadScreen;
+
+// Ponteiro para screen manager (para uso no loop)
+static ScreenManagerImpl* screenMgr = nullptr;
 
 // ============================================================================
 // CALLBACK DE IGNICAO
@@ -100,17 +104,13 @@ void onIgnicaoStatusChange(bool newStatus) {
         ignicaoLigada = false;
     }
 
-    // Atualiza barra de status
-    if (btnManager) {
-        uint32_t tempoIgnicao = ignicaoLigada ? (time_millis() - ignicaoStartTime) : 0;
-        buttonManagerUpdateStatusBar(newStatus, tempoIgnicao, 0, NULL);
-    }
+    // Atualiza barra de status via StatusBar diretamente
+    uint32_t tempoIgnicao = ignicaoLigada ? (time_millis() - ignicaoStartTime) : 0;
+    statusBar.setIgnicao(newStatus, tempoIgnicao);
 }
 
 // Callback de jornada (requerido pelo jornada_manager)
 void onJornadaStateChange(void) {
-    // Callback chamado quando o estado de jornada muda
-    // Pode ser usado para atualizar UI ou disparar eventos
     ESP_LOGD(TAG, "Estado de jornada alterado");
 }
 
@@ -128,17 +128,10 @@ static void system_task(void *arg) {
     vTaskDelay(pdMS_TO_TICKS(100));
     ESP_LOGI(TAG, "Completando inicializacao...");
 
-    // Inicializacao dos subsistemas
+    // Inicializa subsistema de audio
     initSimpleAudio();
 
-    // Interface de usuario
-    buttonManagerInit();
-    btnManager = buttonManagerGetInstance();
-
-    numpadInit();
-    initScreenManager();
-
-    // Controle de ignicao
+    // Controle de ignicao (antes da UI, para saber estado inicial)
     if (initIgnicaoControl(IGNICAO_DEBOUNCE_ON_S, IGNICAO_DEBOUNCE_OFF_S, true)) {
         bool initialState = getIgnicaoStatus();
         ESP_LOGI(TAG, "Estado inicial da ignicao: %s", initialState ? "ON" : "OFF");
@@ -149,13 +142,31 @@ static void system_task(void *arg) {
         }
     }
 
+    // Cria e inicializa StatusBar no lv_layer_top()
+    statusBar.create();
+
+    // Cria e inicializa ScreenManager
+    screenMgr = ScreenManagerImpl::getInstance();
+    screenMgr->init();
+    screenMgr->setStatusBar(&statusBar);
+
+    // Conecta StatusBar ao ScreenManager (para callbacks menu/back)
+    statusBar.setScreenManager(screenMgr);
+
+    // Registra telas
+    screenMgr->registerScreen(&jornadaScreen);
+    screenMgr->registerScreen(&numpadScreen);
+
+    // Mostra tela inicial (Numpad, sem animacao)
+    screenMgr->showInitialScreen(ScreenType::NUMPAD);
+
     systemInitialized = true;
 
     ESP_LOGI(TAG, "=================================");
-    ESP_LOGI(TAG, "Sistema Pronto!");
-    ESP_LOGI(TAG, "- Teclado Numerico: Ativo");
-    ESP_LOGI(TAG, "- Swipe esquerda: Teclado Jornada");
-    ESP_LOGI(TAG, "- Swipe direita: Teclado Numerico");
+    ESP_LOGI(TAG, "Sistema Pronto! (v2 Screen Manager)");
+    ESP_LOGI(TAG, "- Tela inicial: Numpad");
+    ESP_LOGI(TAG, "- Menu: Navega para Jornada");
+    ESP_LOGI(TAG, "- Voltar: Retorna tela anterior");
     ESP_LOGI(TAG, "=================================");
 
     // Loop principal
@@ -164,20 +175,24 @@ static void system_task(void *arg) {
     while (1) {
         uint32_t now = time_millis();
 
-        // Atualizacao periodica (1 segundo)
+        // Atualizacao periodica (1 segundo) - StatusBar com dados de ignicao
         if ((now - lastUpdate) >= 1000) {
             lastUpdate = now;
 
-            if (btnManager) {
-                bool ignicaoOn = getIgnicaoStatus();
-                uint32_t tempoIgnicao = 0;
+            bool ignicaoOn = getIgnicaoStatus();
+            uint32_t tempoIgnicao = (ignicaoLigada && ignicaoOn) ? (now - ignicaoStartTime) : 0;
+            StatusBarData data = {
+                .ignicaoOn = ignicaoOn,
+                .tempoIgnicao = tempoIgnicao,
+                .tempoJornada = 0,
+                .mensagem = nullptr
+            };
+            statusBar.update(data);
+        }
 
-                if (ignicaoLigada && ignicaoOn) {
-                    tempoIgnicao = now - ignicaoStartTime;
-                }
-
-                buttonManagerUpdateStatusBar(ignicaoOn, tempoIgnicao, 0, NULL);
-            }
+        // Atualiza tela atual via ScreenManager
+        if (screenMgr) {
+            screenMgr->update();
         }
 
         // Processa eventos LVGL
