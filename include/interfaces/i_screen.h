@@ -13,6 +13,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "lvgl.h"
 
 #ifdef __cplusplus
 
@@ -24,6 +25,8 @@ enum class ScreenType : uint8_t {
     NUMPAD,
     JORNADA,
     SETTINGS,
+    OTA,
+    RPM,
     MAX_SCREENS
 };
 
@@ -70,6 +73,12 @@ public:
      * Chamado quando a tela perde foco
      */
     virtual void onExit() = 0;
+
+    /**
+     * Obtem o objeto LVGL da tela
+     * @return Ponteiro para o lv_obj_t da tela (ou nullptr)
+     */
+    virtual lv_obj_t* getLvScreen() const = 0;
 };
 
 /**
@@ -122,7 +131,9 @@ typedef enum {
     SCREEN_TYPE_SPLASH = 0,
     SCREEN_TYPE_NUMPAD,
     SCREEN_TYPE_JORNADA,
-    SCREEN_TYPE_SETTINGS
+    SCREEN_TYPE_SETTINGS,
+    SCREEN_TYPE_OTA,
+    SCREEN_TYPE_RPM
 } screen_type_t;
 
 // Interface C para compatibilidade
