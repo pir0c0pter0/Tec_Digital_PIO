@@ -4,6 +4,7 @@
  * ============================================================================
  *
  * Componente reutilizavel para barra de status.
+ * Vive em lv_layer_top() para persistir entre transicoes de tela.
  *
  * Copyright (c) 2024-2026 Getscale Sistemas Embarcados
  * Desenvolvido por Mario Stanski Jr
@@ -12,27 +13,33 @@
  */
 
 #include "ui/widgets/status_bar.h"
+#include "interfaces/i_screen.h"
 #include "ui/common/theme.h"
 #include "config/app_config.h"
 #include "utils/time_utils.h"
 #include "esp_bsp.h"
+#include "esp_log.h"
 #include <string.h>
 #include <stdio.h>
+
+static const char* TAG = "STATUS_BAR";
 
 // ============================================================================
 // CONSTRUTOR E DESTRUTOR
 // ============================================================================
 
 StatusBar::StatusBar()
-    : container(nullptr)
-    , ignicaoIndicator(nullptr)
-    , ignicaoLabel(nullptr)
-    , tempoIgnicaoLabel(nullptr)
-    , tempoJornadaLabel(nullptr)
-    , mensagemLabel(nullptr)
-    , updateTimer(nullptr)
-    , messageExpireTime(0)
-    , parent(nullptr)
+    : container_(nullptr)
+    , backBtn_(nullptr)
+    , menuBtn_(nullptr)
+    , ignicaoIndicator_(nullptr)
+    , ignicaoLabel_(nullptr)
+    , tempoIgnicaoLabel_(nullptr)
+    , tempoJornadaLabel_(nullptr)
+    , mensagemLabel_(nullptr)
+    , updateTimer_(nullptr)
+    , messageExpireTime_(0)
+    , screenManager_(nullptr)
 {
 }
 
@@ -41,95 +48,143 @@ StatusBar::~StatusBar() {
 }
 
 // ============================================================================
-// CRIACAO
+// CRIACAO (em lv_layer_top())
 // ============================================================================
 
-void StatusBar::create(lv_obj_t* parentObj) {
-    if (container) {
+void StatusBar::create() {
+    if (container_) {
         destroy();
     }
 
-    parent = parentObj;
-
     if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
+        ESP_LOGE(TAG, "Falha ao obter lock do display para criar StatusBar");
         return;
     }
 
     Theme* theme = Theme::getInstance();
 
-    // Container principal
-    container = lv_obj_create(parent);
-    lv_obj_set_size(container, DISPLAY_WIDTH, STATUS_BAR_HEIGHT);
-    lv_obj_align(container, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-    lv_obj_set_style_bg_color(container, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_border_width(container, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_side(container, LV_BORDER_SIDE_TOP, LV_PART_MAIN);
-    lv_obj_set_style_border_color(container, lv_color_hex(0x4a4a4a), LV_PART_MAIN);
-    lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+    // Container principal em lv_layer_top() (persistente entre telas)
+    container_ = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(container_, DISPLAY_WIDTH, STATUS_BAR_HEIGHT);
+    lv_obj_align(container_, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    lv_obj_set_style_bg_color(container_, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(container_, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(container_, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_side(container_, LV_BORDER_SIDE_TOP, LV_PART_MAIN);
+    lv_obj_set_style_border_color(container_, lv_color_hex(0x4a4a4a), LV_PART_MAIN);
+    lv_obj_set_style_pad_all(container_, 0, LV_PART_MAIN);
 
-    // Indicador de ignicao (circulo)
-    ignicaoIndicator = lv_obj_create(container);
-    lv_obj_set_size(ignicaoIndicator, 30, 30);
-    lv_obj_align(ignicaoIndicator, LV_ALIGN_LEFT_MID, 10, 0);
-    lv_obj_set_style_radius(ignicaoIndicator, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(ignicaoIndicator, theme->getColorError(), LV_PART_MAIN);
-    lv_obj_set_style_border_width(ignicaoIndicator, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_color(ignicaoIndicator, theme->getTextPrimary(), LV_PART_MAIN);
-    lv_obj_clear_flag(ignicaoIndicator, LV_OBJ_FLAG_SCROLLABLE);
+    // Container nao-clicavel (evita bloquear touch na area da tela abaixo)
+    // Botoes individuais serao clicaveis
+    lv_obj_clear_flag(container_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(container_, LV_OBJ_FLAG_SCROLLABLE);
+
+    // ---- Botao VOLTAR (esquerda, escondido por padrao) ----
+    backBtn_ = lv_btn_create(container_);
+    lv_obj_set_size(backBtn_, 32, 32);
+    lv_obj_align(backBtn_, LV_ALIGN_LEFT_MID, 4, 0);
+    lv_obj_set_style_bg_color(backBtn_, lv_color_hex(0x333333), LV_PART_MAIN);
+    lv_obj_set_style_radius(backBtn_, 4, LV_PART_MAIN);
+    lv_obj_add_flag(backBtn_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(backBtn_, backBtnCallback, LV_EVENT_CLICKED, this);
+    // Esconder por padrao (pilha vazia no boot)
+    lv_obj_add_flag(backBtn_, LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_t* backLabel = lv_label_create(backBtn_);
+    lv_label_set_text(backLabel, LV_SYMBOL_LEFT);
+    lv_obj_center(backLabel);
+    lv_obj_set_style_text_color(backLabel, theme->getTextPrimary(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(backLabel, &lv_font_montserrat_14, LV_PART_MAIN);
+
+    // ---- Botao MENU (ao lado do botao voltar) ----
+    menuBtn_ = lv_btn_create(container_);
+    lv_obj_set_size(menuBtn_, 32, 32);
+    lv_obj_align(menuBtn_, LV_ALIGN_LEFT_MID, 40, 0);
+    lv_obj_set_style_bg_color(menuBtn_, lv_color_hex(0x333333), LV_PART_MAIN);
+    lv_obj_set_style_radius(menuBtn_, 4, LV_PART_MAIN);
+    lv_obj_add_flag(menuBtn_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(menuBtn_, menuBtnCallback, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* menuLabel = lv_label_create(menuBtn_);
+    lv_label_set_text(menuLabel, LV_SYMBOL_LIST);
+    lv_obj_center(menuLabel);
+    lv_obj_set_style_text_color(menuLabel, theme->getTextPrimary(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(menuLabel, &lv_font_montserrat_14, LV_PART_MAIN);
+
+    // ---- Indicador de ignicao (circulo) ----
+    ignicaoIndicator_ = lv_obj_create(container_);
+    lv_obj_set_size(ignicaoIndicator_, 30, 30);
+    lv_obj_align(ignicaoIndicator_, LV_ALIGN_LEFT_MID, 80, 0);
+    lv_obj_set_style_radius(ignicaoIndicator_, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ignicaoIndicator_, theme->getColorError(), LV_PART_MAIN);
+    lv_obj_set_style_border_width(ignicaoIndicator_, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_color(ignicaoIndicator_, theme->getTextPrimary(), LV_PART_MAIN);
+    lv_obj_clear_flag(ignicaoIndicator_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(ignicaoIndicator_, LV_OBJ_FLAG_CLICKABLE);
 
     // Label dentro do indicador
-    ignicaoLabel = lv_label_create(ignicaoIndicator);
-    lv_label_set_text(ignicaoLabel, "OFF");
-    lv_obj_center(ignicaoLabel);
-    lv_obj_set_style_text_color(ignicaoLabel, theme->getTextPrimary(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(ignicaoLabel, &lv_font_montserrat_10, LV_PART_MAIN);
+    ignicaoLabel_ = lv_label_create(ignicaoIndicator_);
+    lv_label_set_text(ignicaoLabel_, "OFF");
+    lv_obj_center(ignicaoLabel_);
+    lv_obj_set_style_text_color(ignicaoLabel_, theme->getTextPrimary(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(ignicaoLabel_, &lv_font_montserrat_10, LV_PART_MAIN);
 
-    // Tempo de ignicao
-    tempoIgnicaoLabel = lv_label_create(container);
-    lv_label_set_text(tempoIgnicaoLabel, "");
-    lv_obj_align(tempoIgnicaoLabel, LV_ALIGN_LEFT_MID, 55, 0);
-    lv_obj_set_style_text_color(tempoIgnicaoLabel, theme->getTextSecondary(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(tempoIgnicaoLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+    // ---- Tempo de ignicao ----
+    tempoIgnicaoLabel_ = lv_label_create(container_);
+    lv_label_set_text(tempoIgnicaoLabel_, "");
+    lv_obj_align(tempoIgnicaoLabel_, LV_ALIGN_LEFT_MID, 120, 0);
+    lv_obj_set_style_text_color(tempoIgnicaoLabel_, theme->getTextSecondary(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(tempoIgnicaoLabel_, &lv_font_montserrat_12, LV_PART_MAIN);
 
-    // Tempo de jornada
-    tempoJornadaLabel = lv_label_create(container);
-    lv_label_set_text(tempoJornadaLabel, "");
-    lv_obj_align(tempoJornadaLabel, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_text_color(tempoJornadaLabel, theme->getTextSecondary(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(tempoJornadaLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+    // ---- Tempo de jornada ----
+    tempoJornadaLabel_ = lv_label_create(container_);
+    lv_label_set_text(tempoJornadaLabel_, "");
+    lv_obj_align(tempoJornadaLabel_, LV_ALIGN_CENTER, 20, 0);
+    lv_obj_set_style_text_color(tempoJornadaLabel_, theme->getTextSecondary(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(tempoJornadaLabel_, &lv_font_montserrat_12, LV_PART_MAIN);
 
-    // Mensagem central
-    mensagemLabel = lv_label_create(container);
-    lv_label_set_text(mensagemLabel, "");
-    lv_obj_align(mensagemLabel, LV_ALIGN_CENTER, -30, 0);
-    lv_obj_set_width(mensagemLabel, 250);
-    lv_label_set_long_mode(mensagemLabel, LV_LABEL_LONG_DOT);
-    lv_obj_set_style_text_align(mensagemLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(mensagemLabel, theme->getTextMuted(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(mensagemLabel, &lv_font_montserrat_20, LV_PART_MAIN);
+    // ---- Mensagem (direita) ----
+    mensagemLabel_ = lv_label_create(container_);
+    lv_label_set_text(mensagemLabel_, "");
+    lv_obj_align(mensagemLabel_, LV_ALIGN_RIGHT_MID, -10, 0);
+    lv_obj_set_width(mensagemLabel_, 150);
+    lv_label_set_long_mode(mensagemLabel_, LV_LABEL_LONG_DOT);
+    lv_obj_set_style_text_align(mensagemLabel_, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    lv_obj_set_style_text_color(mensagemLabel_, theme->getTextMuted(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(mensagemLabel_, &lv_font_montserrat_20, LV_PART_MAIN);
 
-    // Timer de atualizacao
-    updateTimer = lv_timer_create(updateTimerCallback, STATUS_BAR_UPDATE_MS, this);
+    // ---- Timer de atualizacao ----
+    updateTimer_ = lv_timer_create(updateTimerCallback, STATUS_BAR_UPDATE_MS, this);
 
     bsp_display_unlock();
+
+    ESP_LOGI(TAG, "StatusBar criada em lv_layer_top()");
 }
 
+// ============================================================================
+// DESTRUICAO
+// ============================================================================
+
 void StatusBar::destroy() {
-    if (updateTimer) {
-        lv_timer_del(updateTimer);
-        updateTimer = nullptr;
+    if (updateTimer_) {
+        lv_timer_del(updateTimer_);
+        updateTimer_ = nullptr;
     }
 
-    if (container && bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-        lv_obj_del(container);
-        container = nullptr;
-        ignicaoIndicator = nullptr;
-        ignicaoLabel = nullptr;
-        tempoIgnicaoLabel = nullptr;
-        tempoJornadaLabel = nullptr;
-        mensagemLabel = nullptr;
+    if (container_ && bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
+        lv_obj_del(container_);
+        container_ = nullptr;
+        backBtn_ = nullptr;
+        menuBtn_ = nullptr;
+        ignicaoIndicator_ = nullptr;
+        ignicaoLabel_ = nullptr;
+        tempoIgnicaoLabel_ = nullptr;
+        tempoJornadaLabel_ = nullptr;
+        mensagemLabel_ = nullptr;
         bsp_display_unlock();
     }
+
+    ESP_LOGI(TAG, "StatusBar destruida");
 }
 
 // ============================================================================
@@ -137,7 +192,7 @@ void StatusBar::destroy() {
 // ============================================================================
 
 void StatusBar::update(const StatusBarData& data) {
-    if (!container) return;
+    if (!container_) return;
 
     if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
         return;
@@ -146,45 +201,45 @@ void StatusBar::update(const StatusBarData& data) {
     Theme* theme = Theme::getInstance();
 
     // Atualizar indicador de ignicao
-    if (ignicaoIndicator && ignicaoLabel) {
+    if (ignicaoIndicator_ && ignicaoLabel_) {
         if (data.ignicaoOn) {
-            lv_obj_set_style_bg_color(ignicaoIndicator, theme->getColorSuccess(), LV_PART_MAIN);
-            lv_label_set_text(ignicaoLabel, "ON");
+            lv_obj_set_style_bg_color(ignicaoIndicator_, theme->getColorSuccess(), LV_PART_MAIN);
+            lv_label_set_text(ignicaoLabel_, "ON");
         } else {
-            lv_obj_set_style_bg_color(ignicaoIndicator, theme->getColorError(), LV_PART_MAIN);
-            lv_label_set_text(ignicaoLabel, "OFF");
+            lv_obj_set_style_bg_color(ignicaoIndicator_, theme->getColorError(), LV_PART_MAIN);
+            lv_label_set_text(ignicaoLabel_, "OFF");
         }
     }
 
     // Atualizar tempo de ignicao
-    if (tempoIgnicaoLabel) {
+    if (tempoIgnicaoLabel_) {
         if (data.ignicaoOn && data.tempoIgnicao > 0) {
             char buffer[48];
             char timeStr[TIME_FORMAT_MIN_BUFFER];
             time_format_ms(data.tempoIgnicao, timeStr, sizeof(timeStr));
             snprintf(buffer, sizeof(buffer), "Ignicao: %s", timeStr);
-            lv_label_set_text(tempoIgnicaoLabel, buffer);
+            lv_label_set_text(tempoIgnicaoLabel_, buffer);
         } else {
-            lv_label_set_text(tempoIgnicaoLabel, "");
+            lv_label_set_text(tempoIgnicaoLabel_, "");
         }
     }
 
     // Atualizar tempo de jornada
-    if (tempoJornadaLabel) {
+    if (tempoJornadaLabel_) {
         if (data.tempoJornada > 0) {
             char buffer[48];
             char timeStr[TIME_FORMAT_MIN_BUFFER];
             time_format_ms(data.tempoJornada, timeStr, sizeof(timeStr));
             snprintf(buffer, sizeof(buffer), "Jornada M1: %s", timeStr);
-            lv_label_set_text(tempoJornadaLabel, buffer);
+            lv_label_set_text(tempoJornadaLabel_, buffer);
         } else {
-            lv_label_set_text(tempoJornadaLabel, "");
+            lv_label_set_text(tempoJornadaLabel_, "");
         }
     }
 
     // Atualizar mensagem extra
-    if (mensagemLabel && data.mensagem && strlen(data.mensagem) > 0) {
-        lv_label_set_text(mensagemLabel, data.mensagem);
+    if (mensagemLabel_ && data.mensagem && strlen(data.mensagem) > 0) {
+        lv_label_set_text(mensagemLabel_, data.mensagem);
     }
 
     bsp_display_unlock();
@@ -201,22 +256,22 @@ void StatusBar::setIgnicao(bool on, uint32_t tempo) {
 }
 
 void StatusBar::setMessage(const char* message, lv_color_t color, const lv_font_t* font, uint32_t timeoutMs) {
-    if (!mensagemLabel) return;
+    if (!mensagemLabel_) return;
 
     if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
         return;
     }
 
-    lv_label_set_text(mensagemLabel, message ? message : "");
-    lv_obj_set_style_text_color(mensagemLabel, color, LV_PART_MAIN);
+    lv_label_set_text(mensagemLabel_, message ? message : "");
+    lv_obj_set_style_text_color(mensagemLabel_, color, LV_PART_MAIN);
     if (font) {
-        lv_obj_set_style_text_font(mensagemLabel, font, LV_PART_MAIN);
+        lv_obj_set_style_text_font(mensagemLabel_, font, LV_PART_MAIN);
     }
 
     if (timeoutMs > 0 && message && strlen(message) > 0) {
-        messageExpireTime = time_millis() + timeoutMs;
+        messageExpireTime_ = time_millis() + timeoutMs;
     } else {
-        messageExpireTime = 0;
+        messageExpireTime_ = 0;
     }
 
     bsp_display_unlock();
@@ -224,11 +279,39 @@ void StatusBar::setMessage(const char* message, lv_color_t color, const lv_font_
 
 void StatusBar::clearMessage() {
     setMessage("", lv_color_hex(THEME_TEXT_MUTED), &lv_font_montserrat_20, 0);
-    messageExpireTime = 0;
+    messageExpireTime_ = 0;
 }
 
 // ============================================================================
-// TIMER CALLBACK
+// BOTAO VOLTAR
+// ============================================================================
+
+void StatusBar::setBackVisible(bool visible) {
+    if (!backBtn_) return;
+
+    if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
+        return;
+    }
+
+    if (visible) {
+        lv_obj_clear_flag(backBtn_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(backBtn_, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    bsp_display_unlock();
+}
+
+// ============================================================================
+// SCREEN MANAGER REFERENCE
+// ============================================================================
+
+void StatusBar::setScreenManager(IScreenManager* mgr) {
+    screenManager_ = mgr;
+}
+
+// ============================================================================
+// CALLBACKS
 // ============================================================================
 
 void StatusBar::updateTimerCallback(lv_timer_t* timer) {
@@ -236,7 +319,41 @@ void StatusBar::updateTimerCallback(lv_timer_t* timer) {
     if (!self) return;
 
     // Verificar expiracao de mensagem
-    if (self->messageExpireTime > 0 && time_millis() >= self->messageExpireTime) {
+    if (self->messageExpireTime_ > 0 && time_millis() >= self->messageExpireTime_) {
         self->clearMessage();
     }
+}
+
+void StatusBar::menuBtnCallback(lv_event_t* e) {
+    StatusBar* self = static_cast<StatusBar*>(lv_event_get_user_data(e));
+    if (!self || !self->screenManager_) {
+        ESP_LOGW(TAG, "Menu btn: sem screen manager configurado");
+        return;
+    }
+
+    // Ciclar entre telas registradas
+    // Para Phase 1: JORNADA <-> NUMPAD
+    ScreenType current = self->screenManager_->getCurrentScreen();
+
+    ScreenType next;
+    if (current == ScreenType::NUMPAD) {
+        next = ScreenType::JORNADA;
+    } else {
+        next = ScreenType::NUMPAD;
+    }
+
+    ESP_LOGI(TAG, "Menu btn: navegando de %d para %d",
+             static_cast<int>(current), static_cast<int>(next));
+    self->screenManager_->navigateTo(next);
+}
+
+void StatusBar::backBtnCallback(lv_event_t* e) {
+    StatusBar* self = static_cast<StatusBar*>(lv_event_get_user_data(e));
+    if (!self || !self->screenManager_) {
+        ESP_LOGW(TAG, "Back btn: sem screen manager configurado");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Back btn: voltando");
+    self->screenManager_->goBack();
 }
