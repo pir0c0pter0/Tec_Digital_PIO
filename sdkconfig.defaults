@@ -30,7 +30,7 @@ CONFIG_ESP_CONSOLE_USB_CDC=y
 CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 
 # ============================================================================
-# Partições: Huge APP (3MB No OTA / 1MB SPIFFS)
+# Partições: Dual OTA (3MB x2 + 1MB SPIFFS + 64KB NVS)
 # ============================================================================
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
@@ -64,3 +64,14 @@ CONFIG_COMPILER_OPTIMIZATION_SIZE=y
 # I2S
 # ============================================================================
 CONFIG_I2S_ISR_IRAM_SAFE=y
+
+# ============================================================================
+# OTA Support
+# ============================================================================
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+CONFIG_BOOTLOADER_FACTORY_RESET=n
+
+# ============================================================================
+# NVS
+# ============================================================================
+CONFIG_NVS_ENCRYPTION=n
