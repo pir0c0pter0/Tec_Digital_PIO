@@ -133,70 +133,68 @@ Explicitamente excluido. Documentado para prevenir scope creep.
 
 ## Traceability
 
-Preenchido durante criacao do roadmap.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| INFRA-04 | — | Pending |
-| INFRA-05 | — | Pending |
-| SCR-01 | — | Pending |
-| SCR-02 | — | Pending |
-| SCR-03 | — | Pending |
-| SCR-04 | — | Pending |
-| SCR-05 | — | Pending |
-| SCR-06 | — | Pending |
-| SCR-07 | — | Pending |
-| SCR-08 | — | Pending |
-| NVS-01 | — | Pending |
-| NVS-02 | — | Pending |
-| NVS-03 | — | Pending |
-| NVS-04 | — | Pending |
-| BLE-01 | — | Pending |
-| BLE-02 | — | Pending |
-| BLE-03 | — | Pending |
-| BLE-04 | — | Pending |
-| BLE-05 | — | Pending |
-| BLE-06 | — | Pending |
-| BLE-07 | — | Pending |
-| BLE-08 | — | Pending |
-| GATT-01 | — | Pending |
-| GATT-02 | — | Pending |
-| GATT-03 | — | Pending |
-| GATT-04 | — | Pending |
-| GATT-05 | — | Pending |
-| GATT-06 | — | Pending |
-| GATT-07 | — | Pending |
-| GATT-08 | — | Pending |
-| GATT-09 | — | Pending |
-| CFG-01 | — | Pending |
-| CFG-02 | — | Pending |
-| CFG-03 | — | Pending |
-| CFG-04 | — | Pending |
-| CFG-05 | — | Pending |
-| RPM-01 | — | Pending |
-| RPM-02 | — | Pending |
-| RPM-03 | — | Pending |
-| RPM-04 | — | Pending |
-| OTA-01 | — | Pending |
-| OTA-02 | — | Pending |
-| OTA-03 | — | Pending |
-| OTA-04 | — | Pending |
-| OTA-05 | — | Pending |
-| OTA-06 | — | Pending |
-| OTA-07 | — | Pending |
-| OTA-08 | — | Pending |
-| DOC-01 | — | Pending |
-| DOC-02 | — | Pending |
-| DOC-03 | — | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 2 | Pending |
+| INFRA-03 | Phase 2 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| SCR-01 | Phase 1 | Pending |
+| SCR-02 | Phase 1 | Pending |
+| SCR-03 | Phase 1 | Pending |
+| SCR-04 | Phase 1 | Pending |
+| SCR-05 | Phase 1 | Pending |
+| SCR-06 | Phase 1 | Pending |
+| SCR-07 | Phase 1 | Pending |
+| SCR-08 | Phase 1 | Pending |
+| NVS-01 | Phase 1 | Pending |
+| NVS-02 | Phase 1 | Pending |
+| NVS-03 | Phase 1 | Pending |
+| NVS-04 | Phase 3 | Pending |
+| BLE-01 | Phase 2 | Pending |
+| BLE-02 | Phase 2 | Pending |
+| BLE-03 | Phase 2 | Pending |
+| BLE-04 | Phase 2 | Pending |
+| BLE-05 | Phase 2 | Pending |
+| BLE-06 | Phase 2 | Pending |
+| BLE-07 | Phase 2 | Pending |
+| BLE-08 | Phase 2 | Pending |
+| GATT-01 | Phase 2 | Pending |
+| GATT-02 | Phase 2 | Pending |
+| GATT-03 | Phase 2 | Pending |
+| GATT-04 | Phase 2 | Pending |
+| GATT-05 | Phase 3 | Pending |
+| GATT-06 | Phase 3 | Pending |
+| GATT-07 | Phase 3 | Pending |
+| GATT-08 | Phase 2 | Pending |
+| GATT-09 | Phase 2 | Pending |
+| CFG-01 | Phase 3 | Pending |
+| CFG-02 | Phase 3 | Pending |
+| CFG-03 | Phase 3 | Pending |
+| CFG-04 | Phase 3 | Pending |
+| CFG-05 | Phase 3 | Pending |
+| RPM-01 | Phase 5 | Pending |
+| RPM-02 | Phase 5 | Pending |
+| RPM-03 | Phase 5 | Pending |
+| RPM-04 | Phase 5 | Pending |
+| OTA-01 | Phase 4 | Pending |
+| OTA-02 | Phase 4 | Pending |
+| OTA-03 | Phase 4 | Pending |
+| OTA-04 | Phase 4 | Pending |
+| OTA-05 | Phase 4 | Pending |
+| OTA-06 | Phase 4 | Pending |
+| OTA-07 | Phase 4 | Pending |
+| OTA-08 | Phase 4 | Pending |
+| DOC-01 | Phase 5 | Pending |
+| DOC-02 | Phase 5 | Pending |
+| DOC-03 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 48 total
-- Mapped to phases: 0 (aguardando roadmap)
-- Unmapped: 48
+- v1 requirements: 54 total (9 categories: INFRA, SCR, NVS, BLE, GATT, CFG, RPM, OTA, DOC)
+- Mapped to phases: 54
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after research synthesis*
+*Last updated: 2026-02-09 after roadmap creation*
