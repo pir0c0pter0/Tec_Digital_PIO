@@ -483,7 +483,7 @@
 
 /*Documentation of the widgets: https://docs.lvgl.io/latest/en/html/widgets/index.html*/
 
-#define LV_USE_ARC        0
+#define LV_USE_ARC        1
 
 #define LV_USE_BAR        1
 
@@ -512,7 +512,7 @@
     #define LV_ROLLER_INF_PAGES 7 /*Number of extra "pages" when the roller is infinite*/
 #endif
 
-#define LV_USE_SLIDER     0   /*Requires: lv_bar*/
+#define LV_USE_SLIDER     1   /*Requires: lv_bar*/
 
 #define LV_USE_SWITCH     0
 
@@ -560,7 +560,7 @@
 
 #define LV_USE_MENU       0
 
-#define LV_USE_METER      0
+#define LV_USE_METER      1
 
 #define LV_USE_MSGBOX     1
 

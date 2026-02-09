@@ -270,6 +270,43 @@ extern "C" {
 // Tamanho de array
 #define ARRAY_SIZE(arr)         (sizeof(arr) / sizeof((arr)[0]))
 
+// ============================================================================
+// CONFIGURACOES DE NVS (Non-Volatile Storage)
+// ============================================================================
+
+#define NVS_PARTITION_LABEL     "nvs_data"
+#define NVS_NS_SETTINGS         "settings"
+#define NVS_NS_JORNADA          "jornada"
+#define NVS_KEY_VOLUME          "volume"
+#define NVS_KEY_BRIGHTNESS      "brightness"
+#define NVS_JORNADA_VERSION     1
+
+// ============================================================================
+// CONFIGURACOES DE OTA
+// ============================================================================
+
+#define OTA_PARTITION_LABEL_0   "ota_0"
+#define OTA_PARTITION_LABEL_1   "ota_1"
+#define OTA_SELF_TEST_TIMEOUT_S 60
+
+// ============================================================================
+// CONFIGURACOES DE BLE (placeholders para Phase 2)
+// ============================================================================
+
+#define BLE_DEVICE_NAME_PREFIX  "GS-Jornada"
+#define BLE_MTU_PREFERRED       256
+#define BLE_TASK_CORE           0
+#define BLE_TASK_PRIORITY       3
+#define BLE_TASK_STACK_SIZE     (8 * 1024)
+
+// ============================================================================
+// CONFIGURACOES DE NAVEGACAO DE TELAS
+// ============================================================================
+
+#define SCREEN_TRANSITION_TIME_MS   250
+#define SCREEN_TRANSITION_DELAY_MS  0
+#define SCREEN_NAV_STACK_MAX        8
+
 #ifdef __cplusplus
 }
 #endif
