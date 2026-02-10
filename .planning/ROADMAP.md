@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 4 -> 5
 | 1. Foundation | 4/4 | ✓ Complete | 2026-02-10 |
 | 1.1 Screen Hardening | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. BLE Core | 4/4 | ✓ Complete (human verify pending) | 2026-02-10 |
-| 3. Settings + Config Sync | 3/3 | ✓ Complete (human verify pending) | 2026-02-10 |
+| 3. Settings + Config Sync | 3/3 | ✓ Complete (UAT 10/10 passed) | 2026-02-10 |
 | 4. OTA | 0/3 | Not started | - |
 | 5. Polish | 0/3 | Not started | - |
 
