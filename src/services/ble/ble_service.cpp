@@ -12,6 +12,7 @@
  */
 
 #include "services/ble/ble_service.h"
+#include "services/ble/ble_event_queue.h"
 #include "services/ble/gatt/gatt_server.h"
 #include "config/app_config.h"
 #include "config/ble_uuids.h"
@@ -178,7 +179,15 @@ bool BleService::init() {
     ESP_LOGI(TAG, "MTU preferido: %d", BLE_MTU_PREFERRED);
 
     // ========================================================================
-    // 10. Inicia task do host NimBLE
+    // 10. Inicializa fila de eventos BLE (ponte NimBLE -> UI)
+    // ========================================================================
+    if (!ble_event_queue_init()) {
+        ESP_LOGE(TAG, "Falha ao criar fila de eventos BLE (UI nao recebera updates)");
+        // Continua: BLE funciona, apenas sem updates de UI
+    }
+
+    // ========================================================================
+    // 11. Inicia task do host NimBLE
     // ========================================================================
     nimble_port_freertos_init(bleHostTask);
 
@@ -298,6 +307,7 @@ void BleService::startAdvertisingInternal() {
     }
 
     updateStatus(BleStatus::ADVERTISING);
+    ble_post_event(BleStatus::ADVERTISING);
     ESP_LOGI(TAG, "Advertising iniciado: %s", deviceName_);
 }
 
@@ -315,6 +325,7 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
             ESP_LOGI(TAG, "Conectado! handle=%d", event->connect.conn_handle);
             self->connHandle_ = event->connect.conn_handle;
             self->updateStatus(BleStatus::CONNECTED);
+            ble_post_event(BleStatus::CONNECTED, event->connect.conn_handle);
 
             // Inicia seguranca (LE Secure Connections)
             int rc = ble_gap_security_initiate(event->connect.conn_handle);
@@ -333,6 +344,7 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         self->connHandle_ = 0;
         self->currentMtu_ = 23;
         self->updateStatus(BleStatus::DISCONNECTED);
+        ble_post_event(BleStatus::DISCONNECTED);
 
         // Reinicia advertising
         self->startAdvertisingInternal();
@@ -343,6 +355,7 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         if (event->enc_change.status == 0) {
             ESP_LOGI(TAG, "Criptografia ativada (LE Secure Connections)");
             self->updateStatus(BleStatus::SECURED);
+            ble_post_event(BleStatus::SECURED, event->enc_change.conn_handle);
         } else {
             ESP_LOGW(TAG, "Falha na criptografia: status=%d", event->enc_change.status);
         }
@@ -353,6 +366,7 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         uint16_t mtu = event->mtu.value;
         ESP_LOGI(TAG, "MTU negociado: %d (channel_id=%d)", mtu, event->mtu.channel_id);
         self->currentMtu_ = mtu;
+        ble_post_event(BleStatus::CONNECTED, event->mtu.conn_handle, mtu);
 
         // Maximiza tamanho de pacote link-layer para throughput
         ble_hs_hci_util_set_data_len(event->mtu.conn_handle, 251, 2120);

@@ -52,6 +52,7 @@
 
 // BLE
 #include "services/ble/ble_service.h"
+#include "services/ble/ble_event_queue.h"
 
 // Nova arquitetura de telas
 #include "ui/screen_manager.h"
@@ -118,6 +119,30 @@ void onIgnicaoStatusChange(bool newStatus) {
 // Callback de jornada (requerido pelo jornada_manager)
 void onJornadaStateChange(void) {
     ESP_LOGD(TAG, "Estado de jornada alterado");
+}
+
+// ============================================================================
+// HANDLER DE EVENTOS BLE (chamado do system_task -- LVGL-safe)
+// ============================================================================
+
+static void onBleEvent(const BleEvent& evt) {
+    // Atualiza icone BLE na StatusBar (LVGL-safe -- estamos no system_task Core 0)
+    statusBar.setBleStatus(evt.status);
+
+    switch (evt.status) {
+        case BleStatus::DISCONNECTED:
+            ESP_LOGI(TAG, "BLE: Desconectado");
+            break;
+        case BleStatus::ADVERTISING:
+            ESP_LOGI(TAG, "BLE: Advertising...");
+            break;
+        case BleStatus::CONNECTED:
+            ESP_LOGI(TAG, "BLE: Conectado (handle=%d)", evt.conn_handle);
+            break;
+        case BleStatus::SECURED:
+            ESP_LOGI(TAG, "BLE: Conexao segura (handle=%d)", evt.conn_handle);
+            break;
+    }
 }
 
 // ============================================================================
@@ -202,6 +227,7 @@ static void system_task(void *arg) {
         ESP_LOGE(TAG, "Falha ao inicializar BLE!");
     } else {
         ESP_LOGI(TAG, "BLE inicializado - advertising...");
+        statusBar.setBleStatus(BleStatus::ADVERTISING);
     }
 
     ESP_LOGI(TAG, "=================================");
@@ -232,6 +258,9 @@ static void system_task(void *arg) {
             };
             statusBar.update(data);
         }
+
+        // Processa eventos BLE (ponte thread-safe NimBLE -> UI)
+        ble_process_events(onBleEvent);
 
         // Atualiza tela atual via ScreenManager
         if (screenMgr) {
