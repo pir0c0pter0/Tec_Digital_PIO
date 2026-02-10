@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 1.1 of 5 (Screen Infrastructure Hardening)
-Plan: 1 of 3 in current phase (01.1-01 complete)
+Plan: 2 of 3 in current phase (01.1-02 complete)
 Status: In Progress
-Last activity: 2026-02-10 -- 01.1-01-PLAN.md complete (2 tasks, 2 commits)
+Last activity: 2026-02-10 -- 01.1-02-PLAN.md complete (2 tasks, 2 commits)
 
-Progress: [████░░░░░░] 17%
+Progress: [█████░░░░░] 22%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (01-03 pending hardware verify)
-- Average duration: 3 min
-- Total execution time: 0.20 hours
+- Total plans completed: 5 (01-03 pending hardware verify)
+- Average duration: 4 min
+- Total execution time: 0.30 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 3 | 10 min | 3 min |
-| 01.1-screen-infra-hardening | 1 | 2 min | 2 min |
+| 01.1-screen-infra-hardening | 2 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 01-02 (5min), 01-03 (3min), 01.1-01 (2min)
+- Last 5 plans: 01-01 (2min), 01-02 (5min), 01-03 (3min), 01.1-01 (2min), 01.1-02 (6min)
 - Trend: stable
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -40,6 +40,7 @@ Progress: [████░░░░░░] 17%
 | 01 | P02 | 5min | 2 tasks | 5 files |
 | 01 | P03 | 3min | 2 tasks | 5 files |
 | 01.1 | P01 | 2min | 2 tasks | 2 files |
+| 01.1 | P02 | 6min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Static allocation for screens and StatusBar in main.cpp (no heap for embedded reliability)
 - [Phase 01.1]: Replace singleton fallback with ESP_LOGE + return to enforce strict screen isolation
 - [Phase 01.1]: Use temporary blank screen swap when destroying active screen to avoid LVGL undefined state
+- [Phase 01.1]: Lambda capture of self pointer for std::function callbacks; lv_obj user_data for LVGL C callbacks
+- [Phase 01.1]: Delete domain logic object before ButtonManager in screen destructor (dependency order)
 
 ### Pending Todos
 
@@ -82,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 01.1-01-PLAN.md (ButtonManager hardening). Ready for 01.1-02-PLAN.md.
-Resume file: .planning/phases/01.1-screen-infrastructure-hardening/01.1-02-PLAN.md
+Stopped at: Completed 01.1-02-PLAN.md (domain logic singleton elimination). Ready for 01.1-03-PLAN.md.
+Resume file: .planning/phases/01.1-screen-infrastructure-hardening/01.1-03-PLAN.md
