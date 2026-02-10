@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Rastrear estados de jornada de motoristas em tempo real com interface responsiva, comunicacao segura via BLE, e dados que nunca se perdem.
-**Current focus:** Phase 1.1 - Screen Infrastructure Hardening
+**Current focus:** Phase 2 - BLE Core (Phase 1.1 complete)
 
 ## Current Position
 
-Phase: 1.1 of 5 (Screen Infrastructure Hardening)
-Plan: 2 of 3 in current phase (01.1-02 complete)
-Status: In Progress
-Last activity: 2026-02-10 -- 01.1-02-PLAN.md complete (2 tasks, 2 commits)
+Phase: 2 of 5 (BLE Core)
+Plan: 0 of N in current phase (phase 01.1 complete, phase 02 not yet planned)
+Status: Phase 01.1 Complete
+Last activity: 2026-02-10 -- 01.1-03-PLAN.md complete (2 tasks, 2 commits)
 
-Progress: [█████░░░░░] 22%
+Progress: [██████░░░░] 30%
 
 ## Performance Metrics
 

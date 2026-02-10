@@ -13,6 +13,7 @@ Transform the existing single-screen ESP32-S3 journey keypad into a multi-screen
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Foundation** - Partition table, screen manager, NVS persistence, and LVGL widget enablement
+- [x] **Phase 1.1: Screen Infrastructure Hardening** - Eliminate singletons, fix isolation bugs, prepare for configurable multi-screen (INSERTED) ✓ 2026-02-10
 - [ ] **Phase 2: BLE Core** - NimBLE stack, secure connections, GATT services, and BLE-to-UI event bridge
 - [ ] **Phase 3: Settings + Config Sync** - Settings screen with volume/brightness and bidirectional BLE config synchronization
 - [ ] **Phase 4: OTA** - Firmware update via BLE with integrity verification, progress UI, and rollback safety
@@ -42,6 +43,29 @@ Plans:
 - [ ] 01-02: Screen manager framework + StatusBar on lv_layer_top()
 - [ ] 01-03: JornadaScreen + NumpadScreen extraction from button_manager.cpp
 - [ ] 01-04: NVS persistence service (settings + journey state)
+
+### Phase 1.1: Screen Infrastructure Hardening (INSERTED)
+**Goal**: The screen infrastructure is hardened for multi-screen support: domain logic classes are per-screen instances (not singletons), all cross-screen state leaks are eliminated, ButtonManager destructor is safe for any lifecycle scenario, and the architecture supports future configurable screens (enable/disable at runtime, all active screens pre-loaded at boot).
+**Depends on**: Phase 1 (screen manager and screens must exist)
+**Requirements**: SCR-01, SCR-02, SCR-03, SCR-04 (hardening of existing screen requirements)
+**Estimated plans**: 3
+**Success Criteria** (what must be TRUE):
+  1. JornadaKeyboard and NumpadExample are per-screen instances (not singletons) -- creating two JornadaScreens works without conflict
+  2. ButtonManager event handlers never fall back to singleton -- null user_data logs error and returns without processing
+  3. Popup debounce is per-ButtonManager instance (no static shared state)
+  4. ButtonManager destructor safely deletes LVGL screen even when it is the active screen
+  5. All existing v1.x functionality preserved (jornada buttons, numpad, popups, audio, ignition)
+  6. Build passes with zero warnings related to screen code
+
+**Key Risks**:
+- JornadaKeyboard/NumpadExample singleton removal requires careful audit of all call sites to avoid breaking existing behavior
+- ButtonManager destructor fix must handle LVGL's screen switching atomically to avoid rendering glitches
+- Removing legacy `init()` (no-args) may break code paths not discovered during analysis
+
+Plans:
+- [x] 01.1-01: Eliminate singleton fallback in event handlers + fix static debounce + fix destructor
+- [x] 01.1-02: Convert JornadaKeyboard and NumpadExample from singletons to per-screen instances
+- [x] 01.1-03: Remove unused ButtonManager internal StatusBar + cleanup legacy init()
 
 ### Phase 2: BLE Core
 **Goal**: The device advertises over BLE, pairs securely with a mobile phone, and exposes real-time journey states, ignition status, device info, and diagnostics as readable/notifiable GATT characteristics -- all without disrupting the UI or audio.
@@ -133,11 +157,12 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
+Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
 | 1. Foundation | 0/4 | Not started | - |
+| 1.1 Screen Hardening | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. BLE Core | 0/4 | Not started | - |
 | 3. Settings + Config Sync | 0/3 | Not started | - |
 | 4. OTA | 0/3 | Not started | - |
