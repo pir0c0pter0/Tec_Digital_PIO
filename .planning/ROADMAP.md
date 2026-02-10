@@ -71,7 +71,7 @@ Plans:
 **Goal**: The device advertises over BLE, pairs securely with a mobile phone, and exposes real-time journey states, ignition status, device info, and diagnostics as readable/notifiable GATT characteristics -- all without disrupting the UI or audio.
 **Depends on**: Phase 1 (NVS needed for bond persistence, screen manager needed for BLE status icon, INFRA-05 constants)
 **Requirements**: INFRA-02, INFRA-03, BLE-01, BLE-02, BLE-03, BLE-04, BLE-05, BLE-06, BLE-07, BLE-08, GATT-01, GATT-02, GATT-03, GATT-04, GATT-08, GATT-09
-**Estimated plans**: 4
+**Plans:** 4 plans
 **Success Criteria** (what must be TRUE):
   1. Device appears as "GS-Jornada-XXXX" in a BLE scanner app (nRF Connect) with advertised service UUIDs, and pairs using LE Secure Connections with AES-CCM encryption
   2. After pairing, bond is persisted in NVS -- device auto-reconnects to the bonded phone without re-pairing after power cycle
@@ -80,15 +80,15 @@ Plans:
   5. Device Info Service returns correct manufacturer, model, firmware version, and protocol version; Diagnostics Service returns live heap/uptime/queue data
 
 **Key Risks**:
-- NimBLE adds ~50KB internal SRAM -- must migrate LVGL display buffers to PSRAM before enabling BLE to avoid heap starvation
+- NimBLE adds ~50KB internal SRAM -- LVGL display buffers already in PSRAM (RESOLVED)
 - NimBLE callbacks on wrong core can deadlock with LVGL -- must use FreeRTOS event queue for all BLE-to-UI communication
 - Audio stuttering if NimBLE host competes with audio_task on Core 1 -- must set correct task priorities
 
 Plans:
-- [ ] 02-01: NimBLE stack init + GAP advertising + LE Secure Connections + bonding
-- [ ] 02-02: GATT services (Device Info + Journey + Diagnostics) with read/notify
-- [ ] 02-03: BLE-to-UI event queue + BLE status icon in StatusBar
-- [ ] 02-04: GATT validation + protocol version + MTU negotiation
+- [ ] 02-01-PLAN.md -- NimBLE stack init + sdkconfig flags + GAP advertising + LE Secure Connections + bonding
+- [ ] 02-02-PLAN.md -- GATT services (Device Info + Journey + Diagnostics) with read/notify characteristics
+- [ ] 02-03-PLAN.md -- BLE event queue (FreeRTOS) + BLE status icon in StatusBar
+- [ ] 02-04-PLAN.md -- Integration wiring: event queue consumer + notification triggers + GATT validation utility
 
 ### Phase 3: Settings + Config Sync
 **Goal**: Users can adjust volume and brightness from the touchscreen settings screen or from a connected mobile app via BLE, with changes instantly reflected on both sides and persisted across reboots.
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 4 -> 5
 |-------|---------------|--------|-----------|
 | 1. Foundation | 4/4 | ✓ Complete | 2026-02-10 |
 | 1.1 Screen Hardening | 3/3 | ✓ Complete | 2026-02-10 |
-| 2. BLE Core | 0/4 | Not started | - |
+| 2. BLE Core | 0/4 | Planned | - |
 | 3. Settings + Config Sync | 0/3 | Not started | - |
 | 4. OTA | 0/3 | Not started | - |
 | 5. Polish | 0/3 | Not started | - |
