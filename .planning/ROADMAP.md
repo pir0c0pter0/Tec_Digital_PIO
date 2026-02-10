@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Partition table, screen manager, NVS persistence, and LVGL widget enablement
 - [x] **Phase 1.1: Screen Infrastructure Hardening** - Eliminate singletons, fix isolation bugs, prepare for configurable multi-screen (INSERTED) ✓ 2026-02-10
-- [ ] **Phase 2: BLE Core** - NimBLE stack, secure connections, GATT services, and BLE-to-UI event bridge
+- [x] **Phase 2: BLE Core** - NimBLE stack, secure connections, GATT services, and BLE-to-UI event bridge ✓ 2026-02-10
 - [ ] **Phase 3: Settings + Config Sync** - Settings screen with volume/brightness and bidirectional BLE config synchronization
 - [ ] **Phase 4: OTA** - Firmware update via BLE with integrity verification, progress UI, and rollback safety
 - [ ] **Phase 5: Polish** - RPM/speed screen, BLE protocol documentation, and production hardening
@@ -85,10 +85,10 @@ Plans:
 - Audio stuttering if NimBLE host competes with audio_task on Core 1 -- must set correct task priorities
 
 Plans:
-- [ ] 02-01-PLAN.md -- NimBLE stack init + sdkconfig flags + GAP advertising + LE Secure Connections + bonding
-- [ ] 02-02-PLAN.md -- GATT services (Device Info + Journey + Diagnostics) with read/notify characteristics
-- [ ] 02-03-PLAN.md -- BLE event queue (FreeRTOS) + BLE status icon in StatusBar
-- [ ] 02-04-PLAN.md -- Integration wiring: event queue consumer + notification triggers + GATT validation utility
+- [x] 02-01-PLAN.md -- NimBLE stack init + sdkconfig flags + GAP advertising + LE Secure Connections + bonding
+- [x] 02-02-PLAN.md -- GATT services (Device Info + Journey + Diagnostics) with read/notify characteristics
+- [x] 02-03-PLAN.md -- BLE event queue (FreeRTOS) + BLE status icon in StatusBar
+- [x] 02-04-PLAN.md -- Integration wiring: event queue consumer + notification triggers + GATT validation utility
 
 ### Phase 3: Settings + Config Sync
 **Goal**: Users can adjust volume and brightness from the touchscreen settings screen or from a connected mobile app via BLE, with changes instantly reflected on both sides and persisted across reboots.
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 4 -> 5
 |-------|---------------|--------|-----------|
 | 1. Foundation | 4/4 | ✓ Complete | 2026-02-10 |
 | 1.1 Screen Hardening | 3/3 | ✓ Complete | 2026-02-10 |
-| 2. BLE Core | 0/4 | Planned | - |
+| 2. BLE Core | 4/4 | ✓ Complete (human verify pending) | 2026-02-10 |
 | 3. Settings + Config Sync | 0/3 | Not started | - |
 | 4. OTA | 0/3 | Not started | - |
 | 5. Polish | 0/3 | Not started | - |
