@@ -32,7 +32,6 @@ extern "C" void playAudioFile(const char* filename);
 // VARIÁVEIS ESTÁTICAS
 // ============================================================================
 NumpadExample* NumpadExample::instance = nullptr;
-static NumpadExample* g_numpadInstance = nullptr;
 
 // ============================================================================
 // CONSTRUTOR E DESTRUTOR
@@ -105,7 +104,6 @@ void NumpadExample::createNumpad() {
     clearNumpad();
     currentNumber = "";
     lastDigitTime = 0;
-    g_numpadInstance = this;
     
     esp_rom_printf("==============================================");
     esp_rom_printf("  CRIANDO TECLADO NUMÉRICO (SISTEMA ROBUSTO)");
@@ -114,45 +112,140 @@ void NumpadExample::createNumpad() {
     // ========================================================================
     // MÉTODO 1: CRIAÇÃO EM LOTE (RECOMENDADO)
     // ========================================================================
-    
+
+    // Lambda captura 'self' para resolver instancia sem getInstance()
+    NumpadExample* self = this;
+
+    // Lambda para digitos: identifica qual digito pelo buttonId
+    auto digitCallback = [self](int buttonId) {
+        for (int i = 0; i <= 9; i++) {
+            if (self->btnIds[i] == buttonId) {
+                self->addDigit(i);
+                break;
+            }
+        }
+    };
+
+    // Lambda para OK: valida e envia numero
+    auto okCallback = [self](int buttonId) {
+        if (!self->btnManager) return;
+
+        std::string number = self->getNumber();
+
+        if (number.empty()) {
+            playAudioFile("/nok_click.mp3");
+            if (self->statusBar_) {
+                self->statusBar_->setMessage("Nenhum numero digitado!",
+                                              lv_color_hex(0xFFFF00),
+                                              &lv_font_montserrat_16,
+                                              2500);
+            }
+            self->btnManager->showPopup("Aviso",
+                                         "Nenhum numero digitado!",
+                                         POPUP_WARNING, false, nullptr);
+            return;
+        }
+
+        bool isOnlyZeros = true;
+        for (char c : number) {
+            if (c != '0') {
+                isOnlyZeros = false;
+                break;
+            }
+        }
+
+        if (isOnlyZeros) {
+            playAudioFile("/nok_click.mp3");
+            if (self->statusBar_) {
+                self->statusBar_->setMessage("Numero nao pode ser zero!",
+                                              lv_color_hex(0xFF0000),
+                                              &lv_font_montserrat_16,
+                                              3000);
+            }
+            self->btnManager->showPopup("Erro",
+                                         "Numero nao pode ser zero!",
+                                         POPUP_ERROR, false, nullptr);
+            esp_rom_printf("ERRO: Numero zero nao permitido");
+            return;
+        }
+
+        playAudioFile("/ok_click.mp3");
+
+        if (self->statusBar_) {
+            char successMsg[100];
+            snprintf(successMsg, sizeof(successMsg), "Codigo %s enviado!", number.c_str());
+            self->statusBar_->setMessage(successMsg,
+                                          lv_color_hex(0x00FF00),
+                                          &lv_font_montserrat_18,
+                                          3000);
+        }
+
+        char message[100];
+        snprintf(message, sizeof(message),
+                 "Codigo enviado:\n\n%s", number.c_str());
+
+        self->btnManager->showPopup("Sucesso",
+                                     message,
+                                     POPUP_SUCCESS, false, nullptr);
+
+        self->clearNumber();
+        esp_rom_printf("Numero enviado com sucesso: %s\n", number.c_str());
+    };
+
+    // Lambda para cancelar: limpa numero
+    auto cancelCallback = [self](int buttonId) {
+        if (!self->btnManager) return;
+
+        playAudioFile("/nok_click.mp3");
+        self->clearNumber();
+
+        if (self->statusBar_) {
+            self->statusBar_->setMessage("Operacao cancelada",
+                                          lv_color_hex(0x666666),
+                                          &lv_font_montserrat_16,
+                                          2000);
+        }
+        esp_rom_printf("Cancelar pressionado - numeros limpos");
+    };
+
     std::vector<ButtonManager::ButtonBatchDef> buttonDefs = {
         // Primeira linha: 1, 2, 3, CANCELAR
-        {0, 0, "1", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick, 
+        {0, 0, "1", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {1, 0, "2", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+
+        {1, 0, "2", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {2, 0, "3", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+
+        {2, 0, "3", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {3, 0, "CANCELAR", ICON_CANCEL, nullptr, lv_color_hex(0xFF4444), onCancelClick,
+
+        {3, 0, "CANCELAR", ICON_CANCEL, nullptr, lv_color_hex(0xFF4444), cancelCallback,
          1, 1, lv_color_hex(0x000000), &lv_font_montserrat_16},
-        
+
         // Segunda linha: 4, 5, 6, 0
-        {0, 1, "4", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+        {0, 1, "4", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {1, 1, "5", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+
+        {1, 1, "5", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {2, 1, "6", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+
+        {2, 1, "6", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {3, 1, "0", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+
+        {3, 1, "0", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
+
         // Terceira linha: 7, 8, 9, ENVIAR
-        {0, 2, "7", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+        {0, 2, "7", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {1, 2, "8", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+
+        {1, 2, "8", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {2, 2, "9", ICON_NONE, nullptr, lv_color_hex(0x4444FF), onDigitClick,
+
+        {2, 2, "9", ICON_NONE, nullptr, lv_color_hex(0x4444FF), digitCallback,
          1, 1, lv_color_hex(0xFFFFFF), &lv_font_montserrat_42},
-        
-        {3, 2, "ENVIAR", ICON_CHECK, nullptr, lv_color_hex(0x44FF44), onOkClick,
+
+        {3, 2, "ENVIAR", ICON_CHECK, nullptr, lv_color_hex(0x44FF44), okCallback,
          1, 1, lv_color_hex(0x000000), &lv_font_montserrat_16}
     };
     
@@ -287,9 +380,8 @@ void NumpadExample::createNumpad() {
 
 void NumpadExample::clearNumpad() {
     if (!btnManager) return;
-    
+
     stopTimeoutTimer();
-    g_numpadInstance = nullptr;
     
     esp_rom_printf("🧹 Removendo teclado numérico...");
     
@@ -324,8 +416,9 @@ void NumpadExample::startTimeoutTimer() {
     if (timeoutTimer) {
         lv_timer_del(timeoutTimer);
     }
-    timeoutTimer = lv_timer_create(timeoutTimerCallback, 1000, NULL);
-    esp_rom_printf("⏰ Timer de timeout iniciado");
+    // Passa this como user_data (per-screen, sem global g_numpadInstance)
+    timeoutTimer = lv_timer_create(timeoutTimerCallback, 1000, this);
+    esp_rom_printf("Timer de timeout iniciado");
 }
 
 void NumpadExample::stopTimeoutTimer() {
@@ -350,8 +443,12 @@ void NumpadExample::onExitScreen() {
 }
 
 void NumpadExample::timeoutTimerCallback(lv_timer_t* timer) {
-    NumpadExample* numpad = g_numpadInstance;
-    if (!numpad) return;
+    // Resolve instancia via timer user_data (per-screen, sem global)
+    NumpadExample* numpad = static_cast<NumpadExample*>(timer->user_data);
+    if (!numpad) {
+        ESP_LOGE(TAG, "timeoutTimerCallback: null user_data no timer");
+        return;
+    }
     
     if (numpad->currentNumber.empty()) {
         return;
@@ -449,14 +546,16 @@ void NumpadExample::updateDisplay() {
 }
 
 // ============================================================================
-// CALLBACKS
+// CALLBACKS (DEPRECATED: substituidos por lambdas em createNumpad())
+// Mantidos para compatibilidade com codigo legado (ScreenManager antigo)
 // ============================================================================
 
+// DEPRECATED: substituido por lambda digitCallback em createNumpad()
 void NumpadExample::onDigitClick(int buttonId) {
+    ESP_LOGW(TAG, "onDigitClick: chamada via funcao estatica (deprecated)");
     NumpadExample* numpad = getInstance();
     if (!numpad) return;
-    
-    // Identifica qual dígito foi pressionado baseado no ID do botão
+
     for (int i = 0; i <= 9; i++) {
         if (numpad->btnIds[i] == buttonId) {
             numpad->addDigit(i);
@@ -465,13 +564,14 @@ void NumpadExample::onDigitClick(int buttonId) {
     }
 }
 
+// DEPRECATED: substituido por lambda okCallback em createNumpad()
 void NumpadExample::onOkClick(int buttonId) {
+    ESP_LOGW(TAG, "onOkClick: chamada via funcao estatica (deprecated)");
     NumpadExample* numpad = getInstance();
     if (!numpad || !numpad->btnManager) return;
-    
+
     std::string number = numpad->getNumber();
-    
-    // Verifica se há número digitado
+
     if (number.empty()) {
         playAudioFile("/nok_click.mp3");
         if (numpad->statusBar_) {
@@ -485,8 +585,7 @@ void NumpadExample::onOkClick(int buttonId) {
                                       POPUP_WARNING, false, nullptr);
         return;
     }
-    
-    // Verifica se é apenas zeros
+
     bool isOnlyZeros = true;
     for (char c : number) {
         if (c != '0') {
@@ -494,7 +593,7 @@ void NumpadExample::onOkClick(int buttonId) {
             break;
         }
     }
-    
+
     if (isOnlyZeros) {
         playAudioFile("/nok_click.mp3");
         if (numpad->statusBar_) {
@@ -509,8 +608,7 @@ void NumpadExample::onOkClick(int buttonId) {
         esp_rom_printf("ERRO: Numero zero nao permitido");
         return;
     }
-    
-    // Número válido - continua...
+
     playAudioFile("/ok_click.mp3");
 
     if (numpad->statusBar_) {
@@ -521,45 +619,43 @@ void NumpadExample::onOkClick(int buttonId) {
                                        &lv_font_montserrat_18,
                                        3000);
     }
-    
+
     char message[100];
-    snprintf(message, sizeof(message), 
+    snprintf(message, sizeof(message),
              "Codigo enviado:\n\n%s", number.c_str());
-    
-    numpad->btnManager->showPopup("Sucesso", 
+
+    numpad->btnManager->showPopup("Sucesso",
                                   message,
                                   POPUP_SUCCESS, false, nullptr);
-    
+
     numpad->clearNumber();
-    
     esp_rom_printf("Numero enviado com sucesso: %s\n", number.c_str());
 }
 
+// DEPRECATED: substituido por lambda cancelCallback em createNumpad()
 void NumpadExample::onCancelClick(int buttonId) {
+    ESP_LOGW(TAG, "onCancelClick: chamada via funcao estatica (deprecated)");
     NumpadExample* numpad = getInstance();
     if (!numpad || !numpad->btnManager) return;
-    
-    // Toca som de cancelamento
-    playAudioFile("/nok_click.mp3");
 
-    // Limpa os números
+    playAudioFile("/nok_click.mp3");
     numpad->clearNumber();
 
-    // Mensagem de cancelamento em cinza escuro com timeout
     if (numpad->statusBar_) {
         numpad->statusBar_->setMessage("Operacao cancelada",
                                        lv_color_hex(0x666666),
                                        &lv_font_montserrat_16,
                                        2000);
     }
-    
+
     esp_rom_printf("Cancelar pressionado - numeros limpos");
 }
 
 // ============================================================================
-// FUNÇÕES HELPER GLOBAIS
+// FUNÇÕES HELPER GLOBAIS (DEPRECATED: usar ScreenManagerImpl para navegacao)
 // ============================================================================
 
+// DEPRECATED: usar ScreenManagerImpl para mostrar tela numpad
 void showNumpad() {
     esp_rom_printf("Mostrando teclado numerico");
     
@@ -574,6 +670,7 @@ void showNumpad() {
     numpad->createNumpad();
 }
 
+// DEPRECATED: usar ScreenManagerImpl para esconder tela numpad
 void hideNumpad() {
     esp_rom_printf("Escondendo teclado numerico");
     

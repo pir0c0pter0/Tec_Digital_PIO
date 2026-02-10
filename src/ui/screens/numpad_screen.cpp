@@ -54,10 +54,11 @@ void NumpadScreen::create() {
 
     // Cria ButtonManager proprio desta tela (isolamento total)
     btnManager_ = new ButtonManager();
-    numpad_ = NumpadExample::getInstance();
+    // Instancia per-screen (sem singleton) para isolamento total
+    numpad_ = new NumpadExample();
 
     if (!btnManager_ || !numpad_) {
-        ESP_LOGE(TAG, "Falha ao criar ButtonManager ou obter NumpadExample");
+        ESP_LOGE(TAG, "Falha ao criar ButtonManager ou NumpadExample");
         return;
     }
 
@@ -84,9 +85,12 @@ void NumpadScreen::destroy() {
 
     ESP_LOGI(TAG, "Destruindo NumpadScreen...");
 
-    // Limpa o numpad (para timeout timer, remove botoes)
+    // Limpa e deleta NumpadExample ANTES do ButtonManager
+    // (NumpadExample pode referenciar objetos do ButtonManager)
     if (numpad_) {
         numpad_->clearNumpad();
+        delete numpad_;
+        numpad_ = nullptr;
     }
 
     // Deleta o ButtonManager proprio desta tela (deleta screen LVGL e botoes)
@@ -139,6 +143,12 @@ lv_obj_t* NumpadScreen::getLvScreen() const {
 // ============================================================================
 // METODOS INTERNOS
 // ============================================================================
+
+void NumpadScreen::setStatusBar(StatusBar* bar) {
+    if (numpad_) {
+        numpad_->setStatusBar(bar);
+    }
+}
 
 void NumpadScreen::invalidate() {
     screen_ = nullptr;

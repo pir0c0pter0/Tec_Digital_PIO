@@ -25,6 +25,7 @@
 // Forward declarations
 class NumpadExample;
 class ButtonManager;
+class StatusBar;
 
 /**
  * Tela do numpad: grade 4x3 de botoes numericos com display.
@@ -48,6 +49,9 @@ public:
     void onExit() override;
     lv_obj_t* getLvScreen() const override;
     void invalidate() override;
+
+    // StatusBar persistente (repassa para NumpadExample)
+    void setStatusBar(StatusBar* bar);
 
 private:
     // Tela LVGL

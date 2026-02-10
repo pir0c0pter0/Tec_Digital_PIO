@@ -39,7 +39,7 @@ private:
     lv_timer_t* timeoutTimer;
     unsigned long lastDigitTime;  // Timestamp do último dígito digitado
     
-    // Callbacks internos
+    // DEPRECATED: substituidos por lambdas em createNumpad()
     static void onDigitClick(int buttonId);
     static void onOkClick(int buttonId);
     static void onCancelClick(int buttonId);
@@ -50,14 +50,14 @@ private:
     // Gerenciamento do timer (startTimeoutTimer privado, stop publico)
     void startTimeoutTimer();
     
-    // Singleton
+    // DEPRECATED: usar instancias per-screen via new NumpadExample()
     static NumpadExample* instance;
-    
+
 public:
     NumpadExample();
     ~NumpadExample();
-    
-    // Singleton
+
+    // DEPRECATED: usar instancias per-screen via new NumpadExample()
     static NumpadExample* getInstance();
     
     // Inicialização
