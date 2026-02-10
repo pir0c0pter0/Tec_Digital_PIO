@@ -97,15 +97,8 @@ public:
     lv_obj_t* getContainer() const { return container_; }
 
     /**
-     * Define a visibilidade do botao voltar
-     * Deve ser chamado pelo ScreenManager quando a pilha muda.
-     * @param visible true para mostrar, false para esconder
-     */
-    void setBackVisible(bool visible);
-
-    /**
      * Define o ponteiro para o gerenciador de telas
-     * Usado internamente para os callbacks dos botoes menu/voltar.
+     * Usado internamente para o callback do botao trocar tela.
      * @param mgr Ponteiro para IScreenManager
      */
     void setScreenManager(IScreenManager* mgr);
@@ -113,13 +106,11 @@ public:
 private:
     // Callbacks LVGL
     static void updateTimerCallback(lv_timer_t* timer);
-    static void menuBtnCallback(lv_event_t* e);
-    static void backBtnCallback(lv_event_t* e);
+    static void swapBtnCallback(lv_event_t* e);
 
     // Elementos UI
     lv_obj_t* container_;
-    lv_obj_t* backBtn_;
-    lv_obj_t* menuBtn_;
+    lv_obj_t* swapBtn_;
     lv_obj_t* ignicaoIndicator_;
     lv_obj_t* ignicaoLabel_;
     lv_obj_t* tempoIgnicaoLabel_;

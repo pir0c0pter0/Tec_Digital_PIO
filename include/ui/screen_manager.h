@@ -4,7 +4,7 @@
  * ============================================================================
  *
  * Implementacao do IScreenManager com navegacao baseada em pilha
- * e transicoes animadas via lv_scr_load_anim().
+ * e troca instantanea (sem animacao). Cada tela eh 100% isolada.
  *
  * Copyright (c) 2024-2026 Getscale Sistemas Embarcados
  * Desenvolvido por Mario Stanski Jr
@@ -27,9 +27,8 @@ class StatusBar;
 /**
  * Implementacao concreta do IScreenManager
  *
- * Gerencia uma pilha de navegacao de telas com transicoes
- * animadas. Usa lv_scr_load_anim() para slide left (push)
- * e slide right (pop).
+ * Gerencia uma pilha de navegacao de telas com troca instantanea.
+ * Cada tela possui seu proprio ButtonManager para isolamento total.
  */
 class ScreenManagerImpl : public IScreenManager {
 public:
@@ -62,6 +61,14 @@ public:
     bool goBack() override;
 
     /**
+     * Cicla para uma tela sem usar a pilha de navegacao
+     * Apenas troca a tela atual pela destino com animacao.
+     * Nao empurra nem desempilha nada.
+     * @param type Tipo da tela destino
+     */
+    void cycleTo(ScreenType type) override;
+
+    /**
      * Registra uma tela no gerenciador
      * @param screen Ponteiro para a tela (deve implementar IScreen)
      */
@@ -92,12 +99,6 @@ public:
     void showInitialScreen(ScreenType type);
 
     /**
-     * Verifica se esta em transicao
-     * @return true se uma animacao de transicao esta em andamento
-     */
-    bool isTransitioning() const { return transitioning_; }
-
-    /**
      * Obtem a profundidade atual da pilha de navegacao
      * @return Numero de telas na pilha
      */
@@ -106,9 +107,6 @@ public:
 private:
     ScreenManagerImpl();
     ~ScreenManagerImpl() = default;
-
-    // Callback do timer de transicao
-    static void transitionDoneCallback(lv_timer_t* timer);
 
     // Singleton
     static ScreenManagerImpl* instance_;
@@ -122,8 +120,6 @@ private:
 
     // Estado
     ScreenType currentScreen_;
-    bool transitioning_;
-    lv_timer_t* transitionTimer_;
 
     // Referencia para StatusBar persistente
     StatusBar* statusBar_;

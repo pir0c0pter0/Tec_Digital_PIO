@@ -47,6 +47,7 @@ public:
     void onEnter() override;
     void onExit() override;
     lv_obj_t* getLvScreen() const override;
+    void invalidate() override;
 
 private:
     // Tela LVGL

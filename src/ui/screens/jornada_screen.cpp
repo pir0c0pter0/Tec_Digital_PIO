@@ -52,31 +52,26 @@ void JornadaScreen::create() {
 
     ESP_LOGI(TAG, "Criando JornadaScreen...");
 
-    // Obter instancias dos singletons
-    btnManager_ = ButtonManager::getInstance();
+    // Cria ButtonManager proprio desta tela (isolamento total)
+    btnManager_ = new ButtonManager();
     jornadaKb_ = JornadaKeyboard::getInstance();
 
     if (!btnManager_ || !jornadaKb_) {
-        ESP_LOGE(TAG, "Falha ao obter ButtonManager ou JornadaKeyboard");
+        ESP_LOGE(TAG, "Falha ao criar ButtonManager ou obter JornadaKeyboard");
         return;
     }
 
     // Inicializa ButtonManager (cria screen e gridContainer internos)
     btnManager_->init();
 
-    // Inicializa JornadaKeyboard (conecta ao ButtonManager)
-    jornadaKb_->init();
+    // Inicializa JornadaKeyboard com ButtonManager desta tela (nao o singleton)
+    jornadaKb_->init(btnManager_);
 
     // Cria os 12 botoes de jornada via JornadaKeyboard
     jornadaKb_->createKeyboard();
 
-    // Obtem o screen LVGL do ButtonManager para uso como nosso screen_
-    // O ButtonManager cria seu proprio screen em init()->createScreen()
-    // Precisamos acessar via lv_scr_act() apos a criacao
-    if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-        screen_ = lv_scr_act();
-        bsp_display_unlock();
-    }
+    // Obtem o screen LVGL diretamente do ButtonManager
+    screen_ = btnManager_->getScreen();
 
     created_ = true;
     ESP_LOGI(TAG, "JornadaScreen criada com sucesso");
@@ -94,22 +89,12 @@ void JornadaScreen::destroy() {
         jornadaKb_->clearKeyboard();
     }
 
-    // Remove todos os botoes do ButtonManager
+    // Deleta o ButtonManager proprio desta tela (deleta screen LVGL e botoes)
     if (btnManager_) {
-        btnManager_->removeAllButtons();
+        delete btnManager_;
+        btnManager_ = nullptr;
     }
-
-    // Deleta o screen LVGL
-    if (screen_ != nullptr) {
-        if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-            // Nao deletar se for a tela ativa -- ScreenManager cuida da transicao
-            if (screen_ != lv_scr_act()) {
-                lv_obj_del(screen_);
-            }
-            bsp_display_unlock();
-        }
-        screen_ = nullptr;
-    }
+    screen_ = nullptr;
 
     created_ = false;
     ESP_LOGI(TAG, "JornadaScreen destruida");
@@ -137,7 +122,16 @@ void JornadaScreen::onEnter() {
 
 void JornadaScreen::onExit() {
     ESP_LOGI(TAG, "JornadaScreen: onExit");
-    // Nada especial a fazer -- animacoes continuam ate destroy()
+
+    // Fechar popup de selecao de motorista (se aberto)
+    if (jornadaKb_) {
+        jornadaKb_->closeMotoristaSelection();
+    }
+
+    // Fechar popup generico do ButtonManager (se aberto)
+    if (btnManager_) {
+        btnManager_->closePopup();
+    }
 }
 
 lv_obj_t* JornadaScreen::getLvScreen() const {
@@ -147,6 +141,14 @@ lv_obj_t* JornadaScreen::getLvScreen() const {
 // ============================================================================
 // METODOS INTERNOS
 // ============================================================================
+
+void JornadaScreen::invalidate() {
+    screen_ = nullptr;
+    created_ = false;
+    jornadaKb_ = nullptr;
+    btnManager_ = nullptr;
+    ESP_LOGI(TAG, "JornadaScreen invalidada (sem cleanup LVGL)");
+}
 
 void JornadaScreen::createButtonGrid() {
     // Delegado ao JornadaKeyboard::createKeyboard()

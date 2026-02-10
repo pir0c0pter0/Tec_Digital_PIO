@@ -75,8 +75,18 @@ void NumpadExample::init() {
         esp_rom_printf("ERRO: ButtonManager não inicializado!");
         return;
     }
-    
+
     esp_rom_printf("NumpadExample inicializado com sistema robusto");
+}
+
+void NumpadExample::init(ButtonManager* mgr) {
+    btnManager = mgr;
+    if (!btnManager) {
+        esp_rom_printf("ERRO: ButtonManager nulo passado para NumpadExample!");
+        return;
+    }
+
+    esp_rom_printf("NumpadExample inicializado com ButtonManager externo");
 }
 
 // ============================================================================

@@ -79,6 +79,13 @@ public:
      * @return Ponteiro para o lv_obj_t da tela (ou nullptr)
      */
     virtual lv_obj_t* getLvScreen() const = 0;
+
+    /**
+     * Reseta o estado da tela sem deletar objetos LVGL.
+     * Usado quando o LVGL vai auto-deletar a tela antiga
+     * (ex: lv_scr_load_anim com auto_del=true).
+     */
+    virtual void invalidate() = 0;
 };
 
 /**
@@ -110,6 +117,13 @@ public:
      * @return true se conseguiu voltar
      */
     virtual bool goBack() = 0;
+
+    /**
+     * Cicla para uma tela sem usar a pilha de navegacao
+     * Ideal para alternar entre telas em loop (ex: NUMPAD <-> JORNADA)
+     * @param type Tipo da tela destino
+     */
+    virtual void cycleTo(ScreenType type) = 0;
 
     /**
      * Registra uma tela

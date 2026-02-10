@@ -26,9 +26,6 @@ static const char *TAG = "BTN_MGR";
 // ============================================================================
 #define BUTTON_DEBOUNCE_MS 300
 
-static unsigned long lastButtonClickTime = 0;
-static int lastButtonClickedId = -1;
-
 // ============================================================================
 // VARIÁVEIS ESTÁTICAS
 // ============================================================================
@@ -38,7 +35,7 @@ ButtonManager* ButtonManager::instance = nullptr;
 // CONSTRUTOR E DESTRUTOR
 // ============================================================================
 
-ButtonManager::ButtonManager() : 
+ButtonManager::ButtonManager() :
     screen(nullptr),
     gridContainer(nullptr),
     statusBar(nullptr),
@@ -52,6 +49,8 @@ ButtonManager::ButtonManager() :
     activePopup(nullptr),
     lastPopupResult(POPUP_RESULT_NONE),
     nextButtonId(1),
+    lastButtonClickTime_(0),
+    lastButtonClickedId_(-1),
     retryTimer(nullptr) {
     
     // Inicializar configuração de mensagem
@@ -72,23 +71,38 @@ ButtonManager::ButtonManager() :
 }
 
 ButtonManager::~ButtonManager() {
-    // Limpar timer de retry
-    if (retryTimer) {
-        lv_timer_del(retryTimer);
-        retryTimer = nullptr;
+    if (bsp_display_lock(200)) {
+        // Limpar timers LVGL (requer display lock)
+        if (retryTimer) {
+            lv_timer_del(retryTimer);
+            retryTimer = nullptr;
+        }
+        if (statusUpdateTimer) {
+            lv_timer_del(statusUpdateTimer);
+            statusUpdateTimer = nullptr;
+        }
+        if (statusTimer) {
+            lv_timer_del(statusTimer);
+            statusTimer = nullptr;
+        }
+
+        // Limpar botoes (sem deletar objetos LVGL — a tela pai sera deletada abaixo)
+        buttons.clear();
+
+        // Deletar screen LVGL (deleta todos os filhos: gridContainer, statusBar, botoes)
+        if (screen != nullptr && screen != lv_scr_act()) {
+            lv_obj_del(screen);
+        }
+        screen = nullptr;
+
+        bsp_display_unlock();
     }
-    
-    // Limpar timer de status
-    if (statusUpdateTimer) {
-        lv_timer_del(statusUpdateTimer);
-    }
-    
+
     // Deletar mutex
     if (creationMutex) {
         vSemaphoreDelete(creationMutex);
+        creationMutex = nullptr;
     }
-    
-    removeAllButtons();
 }
 
 // ============================================================================
@@ -119,6 +133,14 @@ void ButtonManager::init() {
 
 void ButtonManager::createScreen() {
     if (bsp_display_lock(0)) {
+        // Limpar estado anterior (objetos LVGL sao filhos da tela antiga,
+        // serao deletados automaticamente quando a tela antiga for removida)
+        buttons.clear();
+        for (int x = 0; x < GRID_COLS; x++)
+            for (int y = 0; y < GRID_ROWS; y++)
+                gridOccupancy[x][y] = false;
+        nextButtonId = 0;
+
         screen = lv_obj_create(NULL);
         lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), LV_PART_MAIN);
         
@@ -176,8 +198,8 @@ void ButtonManager::createScreen() {
         lv_obj_set_style_text_color(statusMensagem, lv_color_hex(0x888888), LV_PART_MAIN);
         lv_obj_set_style_text_font(statusMensagem, &lv_font_montserrat_20, LV_PART_MAIN);
         
-        lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_FADE_IN, 300, 0, false);
-        
+        // Nota: NAO carregar o screen aqui -- o ScreenManager controla transicoes
+
         if (!statusUpdateTimer) {
             statusUpdateTimer = lv_timer_create(statusUpdateCallback, 250, this);
         }
@@ -338,8 +360,11 @@ int ButtonManager::addButtonInternal(const PendingButton& btn) {
         lv_obj_set_style_text_font(labelObj, btn.textFont, LV_PART_MAIN);
         lv_obj_align(labelObj, LV_ALIGN_BOTTOM_MID, 0, -5);
         
+        // Armazenar ponteiro do ButtonManager no objeto LVGL para isolamento entre telas
+        lv_obj_set_user_data(newButton.obj, this);
+
         // Adicionar callback
-        lv_obj_add_event_cb(newButton.obj, buttonEventHandler, LV_EVENT_CLICKED, 
+        lv_obj_add_event_cb(newButton.obj, buttonEventHandler, LV_EVENT_CLICKED,
                            (void*)(intptr_t)newButton.id);
         
         // Marcar posição como ocupada
@@ -902,9 +927,10 @@ void ButtonManager::showPopup(const char* title, const char* message,
     popupCallback = callback;
     lastPopupResult = POPUP_RESULT_NONE;
     
-    // Overlay escuro
-    activePopup = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(activePopup, SCREEN_WIDTH, SCREEN_HEIGHT);
+    // Overlay escuro na tela deste ButtonManager (nao lv_scr_act() — isolamento)
+    activePopup = lv_obj_create(screen);
+    lv_obj_set_size(activePopup, SCREEN_WIDTH, SCREEN_HEIGHT - STATUS_BAR_HEIGHT);
+    lv_obj_align(activePopup, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_set_style_bg_color(activePopup, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(activePopup, LV_OPA_70, LV_PART_MAIN);
     lv_obj_clear_flag(activePopup, LV_OBJ_FLAG_SCROLLABLE);
@@ -993,6 +1019,7 @@ void ButtonManager::showPopup(const char* title, const char* message,
     lv_obj_t* btnOk = lv_btn_create(btnContainer);
     lv_obj_set_size(btnOk, 120, 45);
     lv_obj_set_style_bg_color(btnOk, lv_color_hex(0x00AA00), LV_PART_MAIN);
+    lv_obj_set_user_data(btnOk, this);
     lv_obj_add_event_cb(btnOk, popupButtonHandler, LV_EVENT_CLICKED, (void*)(intptr_t)POPUP_RESULT_OK);
     
     lv_obj_t* labelOk = lv_label_create(btnOk);
@@ -1006,6 +1033,7 @@ void ButtonManager::showPopup(const char* title, const char* message,
         lv_obj_t* btnCancel = lv_btn_create(btnContainer);
         lv_obj_set_size(btnCancel, 120, 45);
         lv_obj_set_style_bg_color(btnCancel, lv_color_hex(0xAA0000), LV_PART_MAIN);
+        lv_obj_set_user_data(btnCancel, this);
         lv_obj_add_event_cb(btnCancel, popupButtonHandler, LV_EVENT_CLICKED, (void*)(intptr_t)POPUP_RESULT_CANCEL);
         
         lv_obj_t* labelCancel = lv_label_create(btnCancel);
@@ -1032,19 +1060,26 @@ void ButtonManager::closePopup() {
 
 void ButtonManager::buttonEventHandler(lv_event_t* e) {
     int buttonId = (int)(intptr_t)lv_event_get_user_data(e);
-    ButtonManager* mgr = getInstance();
-    
+
+    // Obter o ButtonManager correto a partir do objeto LVGL (isolamento entre telas)
+    lv_obj_t* target = lv_event_get_target(e);
+    ButtonManager* mgr = static_cast<ButtonManager*>(lv_obj_get_user_data(target));
+    if (!mgr) {
+        mgr = getInstance(); // fallback para codigo legado
+    }
+
     unsigned long currentTime = millis();
-    
-    if (buttonId == lastButtonClickedId && 
-        (currentTime - lastButtonClickTime) < BUTTON_DEBOUNCE_MS) {
+
+    // Debounce por instancia (cada tela tem seu proprio estado)
+    if (buttonId == mgr->lastButtonClickedId_ &&
+        (currentTime - mgr->lastButtonClickTime_) < BUTTON_DEBOUNCE_MS) {
         esp_rom_printf("DEBOUNCE: Ignorando clique repetido do botão ID=%d\n", buttonId);
         return;
     }
-    
-    lastButtonClickTime = currentTime;
-    lastButtonClickedId = buttonId;
-    
+
+    mgr->lastButtonClickTime_ = currentTime;
+    mgr->lastButtonClickedId_ = buttonId;
+
     GridButton* btn = mgr->getButton(buttonId);
     if (btn && btn->enabled && btn->callback) {
         esp_rom_printf("Button clicked: ID=%d, Label=%s\n", buttonId, btn->label.c_str());
@@ -1054,24 +1089,30 @@ void ButtonManager::buttonEventHandler(lv_event_t* e) {
 
 void ButtonManager::popupButtonHandler(lv_event_t* e) {
     PopupResult result = (PopupResult)(intptr_t)lv_event_get_user_data(e);
-    ButtonManager* mgr = getInstance();
-    
+
+    // Obter o ButtonManager correto a partir do objeto LVGL (isolamento entre telas)
+    lv_obj_t* target = lv_event_get_target(e);
+    ButtonManager* mgr = static_cast<ButtonManager*>(lv_obj_get_user_data(target));
+    if (!mgr) {
+        mgr = getInstance(); // fallback para codigo legado
+    }
+
     unsigned long currentTime = millis();
     static unsigned long lastPopupClickTime = 0;
-    
+
     if ((currentTime - lastPopupClickTime) < BUTTON_DEBOUNCE_MS) {
         esp_rom_printf("DEBOUNCE: Ignorando clique repetido no popup");
         return;
     }
-    
+
     lastPopupClickTime = currentTime;
-    
+
     mgr->lastPopupResult = result;
-    
+
     if (mgr->popupCallback) {
         mgr->popupCallback(result);
     }
-    
+
     mgr->closePopup();
 }
 

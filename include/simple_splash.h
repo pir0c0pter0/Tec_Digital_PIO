@@ -46,6 +46,13 @@ void createSplashScreen();
 void removeSplashScreen();
 
 /**
+ * Deleta o objeto LVGL do splash screen
+ * Deve ser chamada APOS carregar uma nova tela ativa.
+ * Seguro chamar multiplas vezes.
+ */
+void deleteSplashScreen();
+
+/**
  * Verifica se o splash terminou
  * @return true se splash concluído, false caso contrário
  */

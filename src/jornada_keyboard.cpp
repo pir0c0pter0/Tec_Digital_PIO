@@ -108,8 +108,18 @@ void JornadaKeyboard::init() {
         esp_rom_printf("ERRO: ButtonManager não inicializado!");
         return;
     }
-    
+
     esp_rom_printf("JornadaKeyboard inicializado");
+}
+
+void JornadaKeyboard::init(ButtonManager* mgr) {
+    btnManager = mgr;
+    if (!btnManager) {
+        esp_rom_printf("ERRO: ButtonManager nulo passado para JornadaKeyboard!");
+        return;
+    }
+
+    esp_rom_printf("JornadaKeyboard inicializado com ButtonManager externo");
 }
 
 // ============================================================================
@@ -599,8 +609,8 @@ void JornadaKeyboard::showMotoristaSelection(TipoAcao acao) {
     
     if (!bsp_display_lock(100)) return;
     
-    // Overlay escuro
-    popupMotorista = lv_obj_create(lv_scr_act());
+    // Overlay escuro na tela do ButtonManager desta jornada (nao lv_scr_act — isolamento)
+    popupMotorista = lv_obj_create(btnManager->getScreen());
     lv_obj_set_size(popupMotorista, SCREEN_WIDTH, SCREEN_HEIGHT);
     lv_obj_set_style_bg_color(popupMotorista, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(popupMotorista, LV_OPA_70, LV_PART_MAIN);

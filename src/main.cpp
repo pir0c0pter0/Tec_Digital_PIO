@@ -160,6 +160,9 @@ static void system_task(void *arg) {
     // Mostra tela inicial (Numpad, sem animacao)
     screenMgr->showInitialScreen(ScreenType::NUMPAD);
 
+    // Deleta o objeto LVGL do splash (agora que temos uma tela ativa)
+    deleteSplashScreen();
+
     systemInitialized = true;
 
     ESP_LOGI(TAG, "=================================");

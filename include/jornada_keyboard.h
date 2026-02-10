@@ -72,7 +72,6 @@ private:
     
     // Métodos internos
     void showMotoristaSelection(TipoAcao acao);
-    void closeMotoristaSelection();
     void processarAcao(int motorista, TipoAcao acao);
     void atualizarIndicadores(TipoAcao acao);
     void atualizarTodosIndicadores();
@@ -97,8 +96,12 @@ public:
     
     // Inicialização
     void init();
+    void init(ButtonManager* mgr);
     void createKeyboard();
     void clearKeyboard();
+
+    // Fechar popup de selecao de motorista (chamado pelo ScreenManager ao sair da tela)
+    void closeMotoristaSelection();
     
     // Estado dos motoristas POR BOTÃO
     bool isMotoristaLogado(TipoAcao acao, int motorista);

@@ -30,8 +30,7 @@ static const char* TAG = "STATUS_BAR";
 
 StatusBar::StatusBar()
     : container_(nullptr)
-    , backBtn_(nullptr)
-    , menuBtn_(nullptr)
+    , swapBtn_(nullptr)
     , ignicaoIndicator_(nullptr)
     , ignicaoLabel_(nullptr)
     , tempoIgnicaoLabel_(nullptr)
@@ -79,42 +78,10 @@ void StatusBar::create() {
     lv_obj_clear_flag(container_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(container_, LV_OBJ_FLAG_SCROLLABLE);
 
-    // ---- Botao VOLTAR (esquerda, escondido por padrao) ----
-    backBtn_ = lv_btn_create(container_);
-    lv_obj_set_size(backBtn_, 32, 32);
-    lv_obj_align(backBtn_, LV_ALIGN_LEFT_MID, 4, 0);
-    lv_obj_set_style_bg_color(backBtn_, lv_color_hex(0x333333), LV_PART_MAIN);
-    lv_obj_set_style_radius(backBtn_, 4, LV_PART_MAIN);
-    lv_obj_add_flag(backBtn_, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(backBtn_, backBtnCallback, LV_EVENT_CLICKED, this);
-    // Esconder por padrao (pilha vazia no boot)
-    lv_obj_add_flag(backBtn_, LV_OBJ_FLAG_HIDDEN);
-
-    lv_obj_t* backLabel = lv_label_create(backBtn_);
-    lv_label_set_text(backLabel, LV_SYMBOL_LEFT);
-    lv_obj_center(backLabel);
-    lv_obj_set_style_text_color(backLabel, theme->getTextPrimary(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(backLabel, &lv_font_montserrat_14, LV_PART_MAIN);
-
-    // ---- Botao MENU (ao lado do botao voltar) ----
-    menuBtn_ = lv_btn_create(container_);
-    lv_obj_set_size(menuBtn_, 32, 32);
-    lv_obj_align(menuBtn_, LV_ALIGN_LEFT_MID, 40, 0);
-    lv_obj_set_style_bg_color(menuBtn_, lv_color_hex(0x333333), LV_PART_MAIN);
-    lv_obj_set_style_radius(menuBtn_, 4, LV_PART_MAIN);
-    lv_obj_add_flag(menuBtn_, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(menuBtn_, menuBtnCallback, LV_EVENT_CLICKED, this);
-
-    lv_obj_t* menuLabel = lv_label_create(menuBtn_);
-    lv_label_set_text(menuLabel, LV_SYMBOL_LIST);
-    lv_obj_center(menuLabel);
-    lv_obj_set_style_text_color(menuLabel, theme->getTextPrimary(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(menuLabel, &lv_font_montserrat_14, LV_PART_MAIN);
-
-    // ---- Indicador de ignicao (circulo) ----
+    // ---- Indicador de ignicao (circulo, esquerda) ----
     ignicaoIndicator_ = lv_obj_create(container_);
     lv_obj_set_size(ignicaoIndicator_, 30, 30);
-    lv_obj_align(ignicaoIndicator_, LV_ALIGN_LEFT_MID, 80, 0);
+    lv_obj_align(ignicaoIndicator_, LV_ALIGN_LEFT_MID, 4, 0);
     lv_obj_set_style_radius(ignicaoIndicator_, LV_RADIUS_CIRCLE, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ignicaoIndicator_, theme->getColorError(), LV_PART_MAIN);
     lv_obj_set_style_border_width(ignicaoIndicator_, 2, LV_PART_MAIN);
@@ -132,26 +99,41 @@ void StatusBar::create() {
     // ---- Tempo de ignicao ----
     tempoIgnicaoLabel_ = lv_label_create(container_);
     lv_label_set_text(tempoIgnicaoLabel_, "");
-    lv_obj_align(tempoIgnicaoLabel_, LV_ALIGN_LEFT_MID, 120, 0);
+    lv_obj_align(tempoIgnicaoLabel_, LV_ALIGN_LEFT_MID, 42, 0);
     lv_obj_set_style_text_color(tempoIgnicaoLabel_, theme->getTextSecondary(), LV_PART_MAIN);
     lv_obj_set_style_text_font(tempoIgnicaoLabel_, &lv_font_montserrat_12, LV_PART_MAIN);
 
     // ---- Tempo de jornada ----
     tempoJornadaLabel_ = lv_label_create(container_);
     lv_label_set_text(tempoJornadaLabel_, "");
-    lv_obj_align(tempoJornadaLabel_, LV_ALIGN_CENTER, 20, 0);
+    lv_obj_align(tempoJornadaLabel_, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_color(tempoJornadaLabel_, theme->getTextSecondary(), LV_PART_MAIN);
     lv_obj_set_style_text_font(tempoJornadaLabel_, &lv_font_montserrat_12, LV_PART_MAIN);
 
-    // ---- Mensagem (direita) ----
+    // ---- Mensagem ----
     mensagemLabel_ = lv_label_create(container_);
     lv_label_set_text(mensagemLabel_, "");
-    lv_obj_align(mensagemLabel_, LV_ALIGN_RIGHT_MID, -10, 0);
-    lv_obj_set_width(mensagemLabel_, 150);
+    lv_obj_align(mensagemLabel_, LV_ALIGN_RIGHT_MID, -46, 0);
+    lv_obj_set_width(mensagemLabel_, 120);
     lv_label_set_long_mode(mensagemLabel_, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_align(mensagemLabel_, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_set_style_text_color(mensagemLabel_, theme->getTextMuted(), LV_PART_MAIN);
     lv_obj_set_style_text_font(mensagemLabel_, &lv_font_montserrat_20, LV_PART_MAIN);
+
+    // ---- Botao TROCAR TELA (canto direito) ----
+    swapBtn_ = lv_btn_create(container_);
+    lv_obj_set_size(swapBtn_, 36, 32);
+    lv_obj_align(swapBtn_, LV_ALIGN_RIGHT_MID, -4, 0);
+    lv_obj_set_style_bg_color(swapBtn_, lv_color_hex(0x333333), LV_PART_MAIN);
+    lv_obj_set_style_radius(swapBtn_, 4, LV_PART_MAIN);
+    lv_obj_add_flag(swapBtn_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(swapBtn_, swapBtnCallback, LV_EVENT_CLICKED, this);
+
+    lv_obj_t* swapLabel = lv_label_create(swapBtn_);
+    lv_label_set_text(swapLabel, LV_SYMBOL_REFRESH);
+    lv_obj_center(swapLabel);
+    lv_obj_set_style_text_color(swapLabel, theme->getTextPrimary(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(swapLabel, &lv_font_montserrat_14, LV_PART_MAIN);
 
     // ---- Timer de atualizacao ----
     updateTimer_ = lv_timer_create(updateTimerCallback, STATUS_BAR_UPDATE_MS, this);
@@ -174,8 +156,7 @@ void StatusBar::destroy() {
     if (container_ && bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
         lv_obj_del(container_);
         container_ = nullptr;
-        backBtn_ = nullptr;
-        menuBtn_ = nullptr;
+        swapBtn_ = nullptr;
         ignicaoIndicator_ = nullptr;
         ignicaoLabel_ = nullptr;
         tempoIgnicaoLabel_ = nullptr;
@@ -283,26 +264,6 @@ void StatusBar::clearMessage() {
 }
 
 // ============================================================================
-// BOTAO VOLTAR
-// ============================================================================
-
-void StatusBar::setBackVisible(bool visible) {
-    if (!backBtn_) return;
-
-    if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-        return;
-    }
-
-    if (visible) {
-        lv_obj_clear_flag(backBtn_, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_add_flag(backBtn_, LV_OBJ_FLAG_HIDDEN);
-    }
-
-    bsp_display_unlock();
-}
-
-// ============================================================================
 // SCREEN MANAGER REFERENCE
 // ============================================================================
 
@@ -324,15 +285,14 @@ void StatusBar::updateTimerCallback(lv_timer_t* timer) {
     }
 }
 
-void StatusBar::menuBtnCallback(lv_event_t* e) {
+void StatusBar::swapBtnCallback(lv_event_t* e) {
     StatusBar* self = static_cast<StatusBar*>(lv_event_get_user_data(e));
     if (!self || !self->screenManager_) {
-        ESP_LOGW(TAG, "Menu btn: sem screen manager configurado");
+        ESP_LOGW(TAG, "Swap btn: sem screen manager configurado");
         return;
     }
 
-    // Ciclar entre telas registradas
-    // Para Phase 1: JORNADA <-> NUMPAD
+    // Ciclar entre NUMPAD <-> JORNADA (sem usar pilha)
     ScreenType current = self->screenManager_->getCurrentScreen();
 
     ScreenType next;
@@ -342,18 +302,7 @@ void StatusBar::menuBtnCallback(lv_event_t* e) {
         next = ScreenType::NUMPAD;
     }
 
-    ESP_LOGI(TAG, "Menu btn: navegando de %d para %d",
+    ESP_LOGI(TAG, "Swap btn: trocando de %d para %d",
              static_cast<int>(current), static_cast<int>(next));
-    self->screenManager_->navigateTo(next);
-}
-
-void StatusBar::backBtnCallback(lv_event_t* e) {
-    StatusBar* self = static_cast<StatusBar*>(lv_event_get_user_data(e));
-    if (!self || !self->screenManager_) {
-        ESP_LOGW(TAG, "Back btn: sem screen manager configurado");
-        return;
-    }
-
-    ESP_LOGI(TAG, "Back btn: voltando");
-    self->screenManager_->goBack();
+    self->screenManager_->cycleTo(next);
 }

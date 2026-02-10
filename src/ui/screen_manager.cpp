@@ -3,8 +3,8 @@
  * GERENCIADOR DE TELAS - IMPLEMENTACAO
  * ============================================================================
  *
- * Navegacao baseada em pilha com transicoes animadas.
- * Push = slide left, Pop = slide right, duracao configuravel.
+ * Navegacao baseada em pilha com troca instantanea (sem animacao).
+ * Cada tela eh 100% isolada (ButtonManager proprio).
  *
  * Copyright (c) 2024-2026 Getscale Sistemas Embarcados
  * Desenvolvido por Mario Stanski Jr
@@ -41,8 +41,6 @@ ScreenManagerImpl* ScreenManagerImpl::getInstance() {
 ScreenManagerImpl::ScreenManagerImpl()
     : stackTop_(-1)
     , currentScreen_(ScreenType::SPLASH)
-    , transitioning_(false)
-    , transitionTimer_(nullptr)
     , statusBar_(nullptr)
 {
     memset(screens_, 0, sizeof(screens_));
@@ -62,12 +60,6 @@ void ScreenManagerImpl::init() {
 
     stackTop_ = -1;
     currentScreen_ = ScreenType::SPLASH;
-    transitioning_ = false;
-
-    if (transitionTimer_ != nullptr) {
-        lv_timer_del(transitionTimer_);
-        transitionTimer_ = nullptr;
-    }
 
     ESP_LOGI(TAG, "ScreenManager inicializado (stack max: %d)", SCREEN_NAV_STACK_MAX);
 }
@@ -97,12 +89,6 @@ void ScreenManagerImpl::registerScreen(IScreen* screen) {
 // ============================================================================
 
 void ScreenManagerImpl::navigateTo(ScreenType type) {
-    // Guarda de transicao: bloqueia navegacao durante animacao
-    if (transitioning_) {
-        ESP_LOGW(TAG, "Navegacao bloqueada: transicao em andamento");
-        return;
-    }
-
     int idx = static_cast<int>(type);
     if (idx < 0 || idx >= static_cast<int>(ScreenType::MAX_SCREENS)) {
         ESP_LOGE(TAG, "Tipo de tela invalido para navegacao: %d", idx);
@@ -142,38 +128,17 @@ void ScreenManagerImpl::navigateTo(ScreenType type) {
     // Chamar onEnter na nova tela
     targetScreen->onEnter();
 
-    // Animar transicao (slide left)
+    // Troca instantanea (sem animacao)
     lv_obj_t* newLvScreen = targetScreen->getLvScreen();
     if (newLvScreen != nullptr) {
         if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-            lv_scr_load_anim(newLvScreen,
-                             LV_SCR_LOAD_ANIM_MOVE_LEFT,
-                             SCREEN_TRANSITION_TIME_MS,
-                             SCREEN_TRANSITION_DELAY_MS,
-                             false);  // auto_del = false (gerenciamos ciclo de vida manualmente)
+            lv_scr_load(newLvScreen);
             bsp_display_unlock();
         }
     }
 
     // Atualizar tela atual
     currentScreen_ = type;
-
-    // Definir flag de transicao e criar timer one-shot para limpar
-    transitioning_ = true;
-    if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-        transitionTimer_ = lv_timer_create(
-            transitionDoneCallback,
-            SCREEN_TRANSITION_TIME_MS + 50,  // +50ms buffer para garantir que animacao terminou
-            this
-        );
-        lv_timer_set_repeat_count(transitionTimer_, 1);  // Single-shot
-        bsp_display_unlock();
-    }
-
-    // Atualizar visibilidade do botao voltar na StatusBar
-    if (statusBar_ != nullptr) {
-        statusBar_->setBackVisible(stackTop_ >= 0);
-    }
 
     ESP_LOGI(TAG, "Navegou para tela tipo=%d (pilha profundidade=%d)", idx, stackTop_ + 1);
 }
@@ -183,12 +148,6 @@ void ScreenManagerImpl::navigateTo(ScreenType type) {
 // ============================================================================
 
 bool ScreenManagerImpl::goBack() {
-    // Guarda de transicao
-    if (transitioning_) {
-        ESP_LOGW(TAG, "goBack bloqueado: transicao em andamento");
-        return false;
-    }
-
     // Verificar se a pilha esta vazia
     if (stackTop_ < 0) {
         ESP_LOGW(TAG, "Pilha de navegacao vazia, nao pode voltar");
@@ -225,15 +184,11 @@ bool ScreenManagerImpl::goBack() {
     // Chamar onEnter na tela restaurada
     previousScreen->onEnter();
 
-    // Animar transicao (slide right)
+    // Troca instantanea (sem animacao)
     lv_obj_t* prevLvScreen = previousScreen->getLvScreen();
     if (prevLvScreen != nullptr) {
         if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-            lv_scr_load_anim(prevLvScreen,
-                             LV_SCR_LOAD_ANIM_MOVE_RIGHT,
-                             SCREEN_TRANSITION_TIME_MS,
-                             SCREEN_TRANSITION_DELAY_MS,
-                             false);  // auto_del = false
+            lv_scr_load(prevLvScreen);
             bsp_display_unlock();
         }
     }
@@ -246,25 +201,59 @@ bool ScreenManagerImpl::goBack() {
     // Atualizar tela atual
     currentScreen_ = previousType;
 
-    // Definir flag de transicao e criar timer one-shot
-    transitioning_ = true;
-    if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-        transitionTimer_ = lv_timer_create(
-            transitionDoneCallback,
-            SCREEN_TRANSITION_TIME_MS + 50,
-            this
-        );
-        lv_timer_set_repeat_count(transitionTimer_, 1);
-        bsp_display_unlock();
-    }
-
-    // Atualizar visibilidade do botao voltar na StatusBar
-    if (statusBar_ != nullptr) {
-        statusBar_->setBackVisible(stackTop_ >= 0);
-    }
-
     ESP_LOGI(TAG, "Voltou para tela tipo=%d", static_cast<int>(previousType));
     return true;
+}
+
+// ============================================================================
+// CICLAR TELA (SEM PILHA)
+// ============================================================================
+
+void ScreenManagerImpl::cycleTo(ScreenType type) {
+    if (type == currentScreen_) {
+        return;
+    }
+
+    int idx = static_cast<int>(type);
+    if (idx < 0 || idx >= static_cast<int>(ScreenType::MAX_SCREENS)) {
+        ESP_LOGE(TAG, "Tipo de tela invalido para cycleTo: %d", idx);
+        return;
+    }
+
+    IScreen* targetScreen = screens_[idx];
+    if (targetScreen == nullptr) {
+        ESP_LOGE(TAG, "Tela nao registrada para cycleTo: tipo=%d", idx);
+        return;
+    }
+
+    IScreen* leavingScreen = screens_[static_cast<int>(currentScreen_)];
+
+    // 1. Sair da tela atual (para timers, fecha popups)
+    if (leavingScreen != nullptr) {
+        leavingScreen->onExit();
+    }
+
+    // 2. Criar tela destino apenas na primeira vez (manter viva depois)
+    if (!targetScreen->isCreated()) {
+        targetScreen->create();
+    }
+
+    // 3. Entrar na tela destino
+    targetScreen->onEnter();
+
+    // 4. Troca instantanea (sem animacao)
+    lv_obj_t* newLvScreen = targetScreen->getLvScreen();
+    if (newLvScreen != nullptr) {
+        if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
+            lv_scr_load(newLvScreen);
+            bsp_display_unlock();
+        }
+    }
+
+    // 5. NAO deletar tela anterior (ambas permanecem na memoria para troca instantanea)
+    currentScreen_ = type;
+
+    ESP_LOGI(TAG, "Ciclou para tela tipo=%d (instantaneo)", idx);
 }
 
 // ============================================================================
@@ -334,25 +323,7 @@ void ScreenManagerImpl::showInitialScreen(ScreenType type) {
     // Definir como tela atual (sem push na pilha)
     currentScreen_ = type;
 
-    // Botao voltar escondido (pilha vazia)
-    if (statusBar_ != nullptr) {
-        statusBar_->setBackVisible(false);
-    }
-
     ESP_LOGI(TAG, "Tela inicial carregada: tipo=%d", idx);
-}
-
-// ============================================================================
-// CALLBACK DE FIM DE TRANSICAO
-// ============================================================================
-
-void ScreenManagerImpl::transitionDoneCallback(lv_timer_t* timer) {
-    ScreenManagerImpl* self = static_cast<ScreenManagerImpl*>(timer->user_data);
-    if (self != nullptr) {
-        self->transitioning_ = false;
-        self->transitionTimer_ = nullptr;
-        ESP_LOGD("SCREEN_MGR", "Transicao concluida");
-    }
 }
 
 // ============================================================================

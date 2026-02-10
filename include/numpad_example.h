@@ -42,10 +42,9 @@ private:
     
     // Callback do timer de timeout
     static void timeoutTimerCallback(lv_timer_t* timer);
-    
-    // Gerenciamento do timer
+
+    // Gerenciamento do timer (startTimeoutTimer privado, stop publico)
     void startTimeoutTimer();
-    void stopTimeoutTimer();
     
     // Singleton
     static NumpadExample* instance;
@@ -59,9 +58,13 @@ public:
     
     // Inicialização
     void init();
+    void init(ButtonManager* mgr);
     void createNumpad();
     void clearNumpad();
     
+    // Parar timer de timeout (chamado pelo ScreenManager ao sair da tela)
+    void stopTimeoutTimer();
+
     // Operações
     void addDigit(int digit);
     void removeLastDigit();

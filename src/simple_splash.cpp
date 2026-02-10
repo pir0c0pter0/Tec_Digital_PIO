@@ -99,7 +99,6 @@ void removeSplashScreen() {
     if (splash_screen && !splash_done) {
         if (bsp_display_lock(0)) {
             splash_done = true;
-            splash_screen = NULL;
             loading_bar = NULL;
 
             if (splash_timer) {
@@ -107,10 +106,27 @@ void removeSplashScreen() {
                 splash_timer = NULL;
             }
 
+            // Nota: NAO zerar splash_screen aqui.
+            // deleteSplashScreen() precisa do ponteiro para liberar o objeto LVGL.
+
             bsp_display_unlock();
 
-            ESP_LOGI(TAG, "Splash screen removido");
+            ESP_LOGI(TAG, "Splash screen removido (aguardando delete)");
         }
+    }
+}
+
+/**
+ * Deleta o objeto LVGL do splash screen
+ */
+void deleteSplashScreen() {
+    if (splash_screen) {
+        if (bsp_display_lock(0)) {
+            lv_obj_del(splash_screen);
+            splash_screen = NULL;
+            bsp_display_unlock();
+        }
+        ESP_LOGI(TAG, "Splash screen LVGL object deletado");
     }
 }
 

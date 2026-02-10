@@ -163,6 +163,10 @@ private:
     std::vector<GridButton> buttons;
     bool gridOccupancy[GRID_COLS][GRID_ROWS];
     int nextButtonId;
+
+    // Debounce por instancia (isolamento entre telas)
+    unsigned long lastButtonClickTime_;
+    int lastButtonClickedId_;
     
     // ==========================================
     // NOVO: Sistema de criação robusta
@@ -209,16 +213,23 @@ private:
     static void statusUpdateCallback(lv_timer_t* timer);
     static void statusTimerHandler(lv_timer_t* timer);
     
+public:
     ButtonManager();
     ~ButtonManager();
-    
-public:
-    // Singleton
+
+    // Non-copyable (possui objetos LVGL, mutex, timers)
+    ButtonManager(const ButtonManager&) = delete;
+    ButtonManager& operator=(const ButtonManager&) = delete;
+
+    // Singleton (para compatibilidade com codigo legado)
     static ButtonManager* getInstance();
     static void destroyInstance();
     
     // Inicialização
     void init();
+
+    // Acesso ao screen LVGL interno
+    lv_obj_t* getScreen() const { return screen; }
     
     // ==========================================
     // Sistema de botões com criação robusta

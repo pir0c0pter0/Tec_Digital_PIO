@@ -52,29 +52,26 @@ void NumpadScreen::create() {
 
     ESP_LOGI(TAG, "Criando NumpadScreen...");
 
-    // Obter instancias dos singletons
-    btnManager_ = ButtonManager::getInstance();
+    // Cria ButtonManager proprio desta tela (isolamento total)
+    btnManager_ = new ButtonManager();
     numpad_ = NumpadExample::getInstance();
 
     if (!btnManager_ || !numpad_) {
-        ESP_LOGE(TAG, "Falha ao obter ButtonManager ou NumpadExample");
+        ESP_LOGE(TAG, "Falha ao criar ButtonManager ou obter NumpadExample");
         return;
     }
 
     // Inicializa ButtonManager (cria screen e gridContainer internos)
     btnManager_->init();
 
-    // Inicializa NumpadExample (conecta ao ButtonManager)
-    numpad_->init();
+    // Inicializa NumpadExample com ButtonManager desta tela (nao o singleton)
+    numpad_->init(btnManager_);
 
     // Cria os 12 botoes do numpad via NumpadExample
     numpad_->createNumpad();
 
-    // Obtem o screen LVGL do ButtonManager para uso como nosso screen_
-    if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-        screen_ = lv_scr_act();
-        bsp_display_unlock();
-    }
+    // Obtem o screen LVGL diretamente do ButtonManager
+    screen_ = btnManager_->getScreen();
 
     created_ = true;
     ESP_LOGI(TAG, "NumpadScreen criada com sucesso");
@@ -92,22 +89,12 @@ void NumpadScreen::destroy() {
         numpad_->clearNumpad();
     }
 
-    // Remove todos os botoes do ButtonManager
+    // Deleta o ButtonManager proprio desta tela (deleta screen LVGL e botoes)
     if (btnManager_) {
-        btnManager_->removeAllButtons();
+        delete btnManager_;
+        btnManager_ = nullptr;
     }
-
-    // Deleta o screen LVGL
-    if (screen_ != nullptr) {
-        if (bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) {
-            // Nao deletar se for a tela ativa -- ScreenManager cuida da transicao
-            if (screen_ != lv_scr_act()) {
-                lv_obj_del(screen_);
-            }
-            bsp_display_unlock();
-        }
-        screen_ = nullptr;
-    }
+    screen_ = nullptr;
 
     created_ = false;
     ESP_LOGI(TAG, "NumpadScreen destruida");
@@ -133,7 +120,16 @@ void NumpadScreen::onEnter() {
 
 void NumpadScreen::onExit() {
     ESP_LOGI(TAG, "NumpadScreen: onExit");
-    // Nada especial -- timeout timer continua ate destroy()
+
+    // Parar timer de timeout (evita callbacks em objetos deletados)
+    if (numpad_) {
+        numpad_->stopTimeoutTimer();
+    }
+
+    // Fechar popup generico do ButtonManager (se aberto)
+    if (btnManager_) {
+        btnManager_->closePopup();
+    }
 }
 
 lv_obj_t* NumpadScreen::getLvScreen() const {
@@ -143,6 +139,15 @@ lv_obj_t* NumpadScreen::getLvScreen() const {
 // ============================================================================
 // METODOS INTERNOS
 // ============================================================================
+
+void NumpadScreen::invalidate() {
+    screen_ = nullptr;
+    created_ = false;
+    numpad_ = nullptr;
+    // Nao deletar btnManager_ aqui -- invalidate assume que LVGL ja limpou
+    btnManager_ = nullptr;
+    ESP_LOGI(TAG, "NumpadScreen invalidada (sem cleanup LVGL)");
+}
 
 void NumpadScreen::createNumpadGrid() {
     // Delegado ao NumpadExample::createNumpad()
