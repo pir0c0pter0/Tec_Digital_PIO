@@ -107,9 +107,9 @@ Plans:
 - GATT write validation must reject out-of-range values (volume > 21, brightness > 100) to prevent undefined behavior
 
 Plans:
-- [ ] 03-01-PLAN.md -- SettingsScreen UI (volume/brightness sliders, system info, back button) + NVS driver name persistence
-- [ ] 03-02-PLAN.md -- GATT Configuration Service (volume, brightness, driver names, time sync) + config event queue
-- [ ] 03-03-PLAN.md -- Bidirectional sync wiring: main.cpp integration + ble_service.cpp subscription routing + menu cycling
+- [x] 03-01-PLAN.md -- SettingsScreen UI (volume/brightness sliders, system info, back button) + NVS driver name persistence
+- [x] 03-02-PLAN.md -- GATT Configuration Service (volume, brightness, driver names, time sync) + config event queue
+- [x] 03-03-PLAN.md -- Bidirectional sync wiring: main.cpp integration + ble_service.cpp subscription routing + menu cycling
 
 ### Phase 4: OTA
 **Goal**: Fleet operators can update device firmware wirelessly via BLE from a mobile app, with progress indication, integrity verification, and automatic rollback if the new firmware fails to boot -- no device is ever bricked by a bad update.
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 4 -> 5
 | 1. Foundation | 4/4 | ✓ Complete | 2026-02-10 |
 | 1.1 Screen Hardening | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. BLE Core | 4/4 | ✓ Complete (human verify pending) | 2026-02-10 |
-| 3. Settings + Config Sync | 0/3 | Planned | - |
+| 3. Settings + Config Sync | 3/3 | ✓ Complete (human verify pending) | 2026-02-10 |
 | 4. OTA | 0/3 | Not started | - |
 | 5. Polish | 0/3 | Not started | - |
 
