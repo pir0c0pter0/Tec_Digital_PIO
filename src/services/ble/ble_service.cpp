@@ -12,6 +12,7 @@
  */
 
 #include "services/ble/ble_service.h"
+#include "services/ble/gatt/gatt_server.h"
 #include "config/app_config.h"
 #include "config/ble_uuids.h"
 #include "utils/debug_utils.h"
@@ -141,10 +142,15 @@ bool BleService::init() {
     ESP_LOGI(TAG, "Seguranca configurada: LE Secure Connections (Just Works)");
 
     // ========================================================================
-    // 6. Inicializa servicos GAP e GATT built-in
+    // 6. Inicializa GATT server (GAP, GATT, DIS, Journey, Diagnostics)
     // ========================================================================
-    ble_svc_gap_init();
-    ble_svc_gatt_init();
+    {
+        int gatt_rc = gatt_svr_init();
+        if (gatt_rc != 0) {
+            ESP_LOGE(TAG, "Falha ao inicializar GATT server: %d", gatt_rc);
+            return false;
+        }
+    }
 
     // ========================================================================
     // 7. Constroi nome do dispositivo com ultimos 2 bytes do MAC BT

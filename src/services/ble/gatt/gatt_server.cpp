@@ -24,7 +24,11 @@
 #include "host/ble_gatt.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
+
+// DIS header nao tem extern "C" guards -- wrapper necessario
+extern "C" {
 #include "services/dis/ble_svc_dis.h"
+}
 
 // ESP-IDF
 #include "esp_log.h"
