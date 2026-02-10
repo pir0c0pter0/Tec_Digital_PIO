@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 /**
- * Inicializa todos os servicos GATT (GAP, GATT, DIS, Journey, Diagnostics).
+ * Inicializa todos os servicos GATT (GAP, GATT, DIS, Journey, Diagnostics, Config).
  * Deve ser chamado uma unica vez durante o init do NimBLE.
  *
  * @return 0 em sucesso, codigo de erro NimBLE em falha

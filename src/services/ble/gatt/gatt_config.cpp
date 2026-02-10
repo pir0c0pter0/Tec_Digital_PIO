@@ -261,7 +261,6 @@ int config_driver_name_access(uint16_t conn_handle, uint16_t attr_handle,
 
     if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR) {
         // Retorna 3 motoristas * 33 bytes (1 byte id + 32 bytes nome) = 99 bytes
-        // NOTE: loadDriverName sera adicionado por 03-01. Ate la, retorna nomes vazios.
         uint8_t buf[MAX_MOTORISTAS * 33];
         memset(buf, 0, sizeof(buf));
 
@@ -269,10 +268,9 @@ int config_driver_name_access(uint16_t conn_handle, uint16_t attr_handle,
             size_t offset = static_cast<size_t>(i) * 33;
             buf[offset] = static_cast<uint8_t>(i + 1); // driver_id 1-3
 
-            // NvsManager::loadDriverName() sera disponibilizado por plan 03-01.
-            // Por enquanto, nomes ficam vazios (null-padded).
-            // Quando 03-01 for executado, descomentar:
-            // NvsManager::getInstance()->loadDriverName(i, (char*)&buf[offset + 1], 32);
+            // Carrega nome do NVS (retorna vazio se nao encontrado)
+            NvsManager::getInstance()->loadDriverName(
+                static_cast<uint8_t>(i), reinterpret_cast<char*>(&buf[offset + 1]), 32);
         }
 
         int rc = os_mbuf_append(ctxt->om, buf, sizeof(buf));

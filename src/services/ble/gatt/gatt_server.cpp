@@ -7,6 +7,7 @@
  * - Device Information Service (SIG 0x180A) via ble_svc_dis
  * - Journey Service (custom UUID) com Journey State + Ignition Status
  * - Diagnostics Service (custom UUID) com System Diagnostics
+ * - Configuration Service (custom UUID) com Volume + Brightness + Driver Name + Time Sync
  *
  * Chamado por BleService::init() durante inicializacao do NimBLE.
  *
