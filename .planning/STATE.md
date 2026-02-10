@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 4 of 5 (OTA)
-Plan: 0 of ? in current phase (Phase 03 complete, Phase 04 not yet planned)
-Status: Phase 03 Complete -- Ready for Phase 04
-Last activity: 2026-02-10 -- 03-03-PLAN.md complete (Settings + Config Sync integration wiring)
+Plan: 1 of 3 in current phase
+Status: Executing Phase 04 -- Plan 01 complete
+Last activity: 2026-02-10 -- 04-01-PLAN.md complete (OTA foundation: types, GATT prov service, BLE shutdown)
 
-Progress: [██████████████░░░░░░] 70%
+Progress: [███████████████░░░░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: 5 min
-- Total execution time: 1.32 hours
+- Total execution time: 1.39 hours
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: [██████████████░░░░░░] 70%
 | 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
 | 02-ble-core | 4 | 27 min | 7 min |
 | 03-settings | 3 | 19 min | 6 min |
+| 04-ota | 1 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-03 (8min), 02-04 (4min), 03-01 (7min), 03-02 (8min), 03-03 (4min)
-- Trend: Integration/wiring plans faster than creation plans
+- Last 5 plans: 02-04 (4min), 03-01 (7min), 03-02 (8min), 03-03 (4min), 04-01 (4min)
+- Trend: Foundation/type-definition plans consistently fast (~4min)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -52,6 +53,7 @@ Progress: [██████████████░░░░░░] 70%
 | 03 | P01 | 7min | 2 tasks | 8 files |
 | 03 | P02 | 8min | 2 tasks | 5 files |
 | 03 | P03 | 4min | 3 tasks | 4 files |
+| 04 | P01 | 4min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -105,6 +107,11 @@ Recent decisions affecting current work:
 - [Phase 03-03]: No setStatusBar() for SettingsScreen -- uses direct LVGL widgets, not ButtonManager delegation
 - [Phase 03-03]: Config event queue init inside BLE success block -- queue only needed if BLE active
 - [Phase 03-03]: Both journey and config modules called in SUBSCRIBE handler -- each self-filters by attr_handle
+- [Phase 04-01]: nimble_port_deinit() handles controller cleanup in ESP-IDF 5.3.1 -- no separate esp_nimble_hci_and_controller_deinit
+- [Phase 04-01]: Wi-Fi credentials BLE format: [1B ssid_len][ssid][1B pwd_len][pwd] -- variable length, max 98 bytes
+- [Phase 04-01]: OTA status as 2 bytes [state, error_code] -- compact for BLE notify
+- [Phase 04-01]: IP address as 4 raw bytes (network byte order) -- app parses directly
+- [Phase 04-01]: OTA prov event queue handler uses C pointer callback for extern "C" compatibility
 
 ### Pending Todos
 
@@ -123,5 +130,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 03-03-PLAN.md (Settings + Config Sync integration). Phase 03 complete (3 of 3 plans done). Ready for Phase 04.
-Resume file: .planning/phases/04-ota/ (phase not yet planned)
+Stopped at: Completed 04-01-PLAN.md (OTA foundation: types, GATT prov service, BLE shutdown). Plan 1 of 3 in Phase 04.
+Resume file: .planning/phases/04-ota/04-02-PLAN.md
