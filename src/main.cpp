@@ -22,6 +22,7 @@
 // ESP-IDF
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_system.h"
 
 // Configuracao centralizada
 #include "config/app_config.h"
@@ -56,12 +57,20 @@
 #include "services/ble/gatt/gatt_journey.h"
 #include "services/ble/gatt/gatt_config.h"
 
+// OTA
+#include "services/ota/ota_self_test.h"
+#include "services/ota/ota_service.h"
+#include "services/ota/ota_types.h"
+#include "services/ota/ota_http_server.h"
+#include "services/ble/gatt/gatt_ota_prov.h"
+
 // Nova arquitetura de telas
 #include "ui/screen_manager.h"
 #include "ui/widgets/status_bar.h"
 #include "ui/screens/jornada_screen.h"
 #include "ui/screens/numpad_screen.h"
 #include "ui/screens/settings_screen.h"
+#include "ui/screens/ota_screen.h"
 
 #include <sys/time.h>
 
@@ -86,6 +95,10 @@ static StatusBar statusBar;
 static JornadaScreen jornadaScreen;
 static NumpadScreen numpadScreen;
 static SettingsScreen settingsScreen;
+static OtaScreen otaScreen;
+
+// OTA
+static OtaService* otaService = nullptr;
 
 // Ponteiro para screen manager (para uso no loop)
 static ScreenManagerImpl* screenMgr = nullptr;
@@ -207,6 +220,45 @@ static void onConfigEvent(const ConfigEvent& evt) {
 }
 
 // ============================================================================
+// HANDLERS OTA (file-scope statics para acesso via ponteiro de funcao C)
+// ============================================================================
+
+/**
+ * Handler de evento de provisionamento OTA (credenciais Wi-Fi via BLE).
+ * Navega para OtaScreen, bloqueia navegacao e inicia fluxo OTA.
+ */
+static void onOtaProvEvent(const OtaProvEvent* evt) {
+    if (!evt) return;
+
+    if (evt->type == OTA_PROV_EVT_WIFI_CREDS && otaService) {
+        ESP_LOGI(TAG, "OTA: credenciais Wi-Fi recebidas, iniciando OTA...");
+
+        // 1. Navega para OtaScreen (antes de bloquear navegacao)
+        if (screenMgr) {
+            screenMgr->cycleTo(ScreenType::OTA);
+            // 2. Bloqueia navegacao (impede troca de tela durante OTA)
+            screenMgr->setNavigationLocked(true);
+        }
+
+        // 3. Inicia fluxo OTA
+        otaService->startProvisioning(evt->creds);
+    }
+}
+
+/**
+ * Handler de progresso OTA -- atualiza OtaScreen.
+ * Funcao estatica (sem captures) para compatibilidade com ponteiro C.
+ */
+static void onOtaProgress(const OtaProgressEvent* evt) {
+    if (!evt) return;
+
+    if (screenMgr && screenMgr->getCurrentScreen() == ScreenType::OTA) {
+        otaScreen.updateProgress(evt->percent, evt->bytes_received, evt->bytes_total);
+        otaScreen.updateState(evt->state);
+    }
+}
+
+// ============================================================================
 // TASK PRINCIPAL DO SISTEMA
 // ============================================================================
 
@@ -219,6 +271,10 @@ static void system_task(void *arg) {
 
     vTaskDelay(pdMS_TO_TICKS(100));
     ESP_LOGI(TAG, "Completando inicializacao...");
+
+    // Self-test pos-OTA (verifica se firmware precisa ser validado)
+    // Deve rodar antes da init normal: se falhar, reverte automaticamente
+    ota_self_test();
 
     // Inicializa NVS (deve ser antes de qualquer leitura de configuracao)
     auto* nvsMgr = NvsManager::getInstance();
@@ -268,11 +324,15 @@ static void system_task(void *arg) {
     // Registra SettingsScreen
     screenMgr->registerScreen(&settingsScreen);
 
+    // Registra OtaScreen
+    screenMgr->registerScreen(&otaScreen);
+
     // Pre-cria todas as telas no boot para troca instantanea
     // (evita lag na primeira navegacao)
     jornadaScreen.create();
     numpadScreen.create();
     settingsScreen.create();
+    otaScreen.create();
 
     // Conecta StatusBar as telas via metodos per-screen (sem singleton)
     numpadScreen.setStatusBar(&statusBar);
@@ -286,6 +346,10 @@ static void system_task(void *arg) {
 
     systemInitialized = true;
 
+    // Inicializa OtaService (singleton, sem recursos ate startProvisioning)
+    otaService = OtaService::getInstance();
+    otaService->setProgressCallback(onOtaProgress);
+
     // Inicializa BLE (apos NVS e UI para nao bloquear boot)
     auto* bleSvc = BleService::getInstance();
     if (!bleSvc->init()) {
@@ -296,6 +360,9 @@ static void system_task(void *arg) {
 
         // Inicializa fila de eventos de configuracao
         config_event_queue_init();
+
+        // Inicializa fila de eventos de provisionamento OTA
+        ota_prov_event_queue_init();
     }
 
     ESP_LOGI(TAG, "=================================");
@@ -332,6 +399,23 @@ static void system_task(void *arg) {
 
         // Processa eventos de configuracao BLE
         config_process_events(onConfigEvent);
+
+        // Processa eventos de provisionamento OTA (credenciais Wi-Fi via BLE)
+        ota_prov_process_events(onOtaProvEvent);
+
+        // Processa state machine OTA (se ativo)
+        if (otaService && otaService->getState() != OTA_STATE_IDLE) {
+            otaService->process();
+
+            // Verifica se OTA falhou
+            OtaState otaState = otaService->getState();
+            if (otaState == OTA_STATE_FAILED) {
+                ESP_LOGE(TAG, "OTA falhou! Reiniciando...");
+                otaScreen.showError("Falha na atualizacao. Reiniciando...");
+                vTaskDelay(pdMS_TO_TICKS(3000));  // Mostra erro por 3 segundos
+                esp_restart();  // Reinicia para operacao normal (BLE reinicializa)
+            }
+        }
 
         // Atualiza tela atual via ScreenManager
         if (screenMgr) {

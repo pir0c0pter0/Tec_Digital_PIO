@@ -42,6 +42,7 @@ ScreenManagerImpl::ScreenManagerImpl()
     : stackTop_(-1)
     , currentScreen_(ScreenType::SPLASH)
     , statusBar_(nullptr)
+    , navigationLocked_(false)
 {
     memset(screens_, 0, sizeof(screens_));
     memset(navStack_, 0, sizeof(navStack_));
@@ -89,6 +90,11 @@ void ScreenManagerImpl::registerScreen(IScreen* screen) {
 // ============================================================================
 
 void ScreenManagerImpl::navigateTo(ScreenType type) {
+    if (navigationLocked_) {
+        ESP_LOGW(TAG, "Navegacao bloqueada (OTA em progresso)");
+        return;
+    }
+
     int idx = static_cast<int>(type);
     if (idx < 0 || idx >= static_cast<int>(ScreenType::MAX_SCREENS)) {
         ESP_LOGE(TAG, "Tipo de tela invalido para navegacao: %d", idx);
@@ -148,6 +154,11 @@ void ScreenManagerImpl::navigateTo(ScreenType type) {
 // ============================================================================
 
 bool ScreenManagerImpl::goBack() {
+    if (navigationLocked_) {
+        ESP_LOGW(TAG, "Navegacao bloqueada (OTA em progresso)");
+        return false;
+    }
+
     // Verificar se a pilha esta vazia
     if (stackTop_ < 0) {
         ESP_LOGW(TAG, "Pilha de navegacao vazia, nao pode voltar");
@@ -210,6 +221,11 @@ bool ScreenManagerImpl::goBack() {
 // ============================================================================
 
 void ScreenManagerImpl::cycleTo(ScreenType type) {
+    if (navigationLocked_) {
+        ESP_LOGW(TAG, "Navegacao bloqueada (OTA em progresso)");
+        return;
+    }
+
     if (type == currentScreen_) {
         return;
     }
@@ -276,6 +292,19 @@ void ScreenManagerImpl::update() {
             screen->update();
         }
     }
+}
+
+// ============================================================================
+// NAVIGATION LOCK (OTA)
+// ============================================================================
+
+bool ScreenManagerImpl::isNavigationLocked() const {
+    return navigationLocked_;
+}
+
+void ScreenManagerImpl::setNavigationLocked(bool locked) {
+    navigationLocked_ = locked;
+    ESP_LOGI(TAG, "Navegacao %s", locked ? "bloqueada" : "desbloqueada");
 }
 
 // ============================================================================

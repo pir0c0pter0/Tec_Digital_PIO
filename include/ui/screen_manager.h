@@ -104,6 +104,18 @@ public:
      */
     int getStackDepth() const { return stackTop_ + 1; }
 
+    /**
+     * Verifica se a navegacao esta bloqueada
+     * @return true se navegacao bloqueada
+     */
+    bool isNavigationLocked() const override;
+
+    /**
+     * Bloqueia ou desbloqueia navegacao entre telas
+     * @param locked true para bloquear, false para desbloquear
+     */
+    void setNavigationLocked(bool locked) override;
+
 private:
     ScreenManagerImpl();
     ~ScreenManagerImpl() = default;
@@ -123,6 +135,9 @@ private:
 
     // Referencia para StatusBar persistente
     StatusBar* statusBar_;
+
+    // Navegacao bloqueada (durante OTA)
+    bool navigationLocked_;
 };
 
 #endif // __cplusplus

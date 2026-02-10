@@ -334,6 +334,12 @@ void StatusBar::swapBtnCallback(lv_event_t* e) {
         return;
     }
 
+    // Verifica se navegacao esta bloqueada (OTA em progresso)
+    if (self->screenManager_->isNavigationLocked()) {
+        ESP_LOGW(TAG, "Swap btn: navegacao bloqueada (OTA em progresso)");
+        return;
+    }
+
     // Ciclo de 3 telas: NUMPAD -> JORNADA -> SETTINGS -> NUMPAD
     ScreenType current = self->screenManager_->getCurrentScreen();
 

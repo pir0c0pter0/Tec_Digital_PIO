@@ -135,6 +135,19 @@ public:
      * Atualiza todas as telas ativas
      */
     virtual void update() = 0;
+
+    /**
+     * Verifica se a navegacao esta bloqueada (ex: durante OTA)
+     * @return true se navegacao bloqueada
+     */
+    virtual bool isNavigationLocked() const = 0;
+
+    /**
+     * Bloqueia ou desbloqueia navegacao entre telas.
+     * Quando bloqueada, navigateTo/goBack/cycleTo recusam trocar tela.
+     * @param locked true para bloquear, false para desbloquear
+     */
+    virtual void setNavigationLocked(bool locked) = 0;
 };
 
 extern "C" {
