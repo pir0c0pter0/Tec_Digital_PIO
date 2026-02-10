@@ -112,26 +112,26 @@ Plans:
 - [x] 03-03-PLAN.md -- Bidirectional sync wiring: main.cpp integration + ble_service.cpp subscription routing + menu cycling
 
 ### Phase 4: OTA
-**Goal**: Fleet operators can update device firmware wirelessly via BLE from a mobile app, with progress indication, integrity verification, and automatic rollback if the new firmware fails to boot -- no device is ever bricked by a bad update.
-**Depends on**: Phase 1 (OTA partitions, screen manager for OtaScreen), Phase 2 (stable BLE for data transfer)
+**Goal**: Fleet operators can update device firmware wirelessly from a mobile app via Wi-Fi, with progress indication, integrity verification, and automatic rollback if the new firmware fails to boot -- no device is ever bricked by a bad update.
+**Depends on**: Phase 1 (OTA partitions, screen manager for OtaScreen), Phase 2 (stable BLE for credential transfer)
 **Requirements**: OTA-01, OTA-02, OTA-03, OTA-04, OTA-05, OTA-06, OTA-07, OTA-08
-**Estimated plans**: 3
+**Plans:** 3 plans
 **Success Criteria** (what must be TRUE):
-  1. A mobile app can initiate OTA, transfer a complete firmware image over BLE in chunks (write-without-response at negotiated MTU), and the device writes it to the inactive OTA partition
+  1. A mobile app can send Wi-Fi credentials via BLE, the ESP32 connects to Wi-Fi, reports its IP back via BLE, disables BLE, and receives firmware via HTTP POST on port 8080
   2. OtaScreen shows a progress bar with percentage complete, bytes received vs total, and the UI is locked during transfer to prevent accidental interruption
   3. Device verifies SHA-256 hash of received firmware image before committing -- a corrupted image is rejected and the device remains on current firmware
-  4. After successful OTA and reboot, the new firmware runs a self-test (BLE init, LVGL init, touch responsive) and only then marks itself as valid; if self-test does not complete within 60 seconds, watchdog triggers automatic rollback to previous firmware
-  5. OTA state machine transitions are observable via BLE status characteristic: IDLE -> PREPARING -> RECEIVING -> VERIFYING -> REBOOTING (and ABORTING/FAILED on error)
+  4. After successful OTA and reboot, the new firmware runs a self-test (BLE init, LVGL init, NVS, audio) and only then marks itself as valid; if self-test does not complete within 60 seconds, watchdog triggers automatic rollback to previous firmware
+  5. OTA state machine transitions are observable via BLE status characteristic: IDLE -> CONNECTING_WIFI -> WIFI_CONNECTED -> DISABLING_BLE -> STARTING_HTTP -> WAITING_FIRMWARE -> RECEIVING -> VERIFYING -> REBOOTING (and ABORTING/FAILED on error)
 
 **Key Risks**:
-- BLE connection drop during transfer loses all progress -- consider implementing resume-from-offset in the protocol design
-- Blocking flash writes in NimBLE context causes BLE timeouts -- must buffer chunks in RAM and flush to flash from system_task
+- Wi-Fi connection can block LVGL rendering if done from system_task -- mitigated by non-blocking polling pattern
+- NimBLE shutdown must NOT be called from NimBLE host task -- called from system_task context
 - A bug in OTA or self-test code can brick devices -- must test full OTA cycle (ota_0 -> ota_1 -> ota_0) and deliberate rollback on development hardware
 
 Plans:
-- [ ] 04-01: OTA GATT Service + OTA state machine + chunk buffering
-- [ ] 04-02: OtaScreen with progress bar + UI lock during transfer
-- [ ] 04-03: SHA-256 verification + self-test + rollback watchdog
+- [ ] 04-01-PLAN.md -- OTA types + GATT provisioning service + BLE shutdown method + constants/UUIDs
+- [ ] 04-02-PLAN.md -- Wi-Fi STA + HTTP OTA server + SHA-256 + OtaService state machine + OtaScreen UI
+- [ ] 04-03-PLAN.md -- Self-test + rollback + main.cpp integration + navigation lock + hardware verification
 
 ### Phase 5: Polish
 **Goal**: The device displays real-time RPM and speed gauges (with placeholder data ready for an external OBD adapter), and the BLE protocol is fully documented for the mobile app development team.
