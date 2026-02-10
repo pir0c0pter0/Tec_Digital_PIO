@@ -6,6 +6,7 @@
 
 #include "jornada_keyboard.h"
 #include "numpad_example.h"
+#include "ui/widgets/status_bar.h"
 #include "esp_bsp.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -60,8 +61,9 @@ ScreenManager* ScreenManager::instance = nullptr;
 // JORNADA KEYBOARD - CONSTRUTOR E DESTRUTOR
 // ============================================================================
 
-JornadaKeyboard::JornadaKeyboard() : 
+JornadaKeyboard::JornadaKeyboard() :
     btnManager(nullptr),
+    statusBar_(nullptr),
     popupMotorista(nullptr),
     acaoPendente(ACAO_JORNADA) {
     
@@ -91,11 +93,16 @@ JornadaKeyboard::~JornadaKeyboard() {
 // SINGLETON
 // ============================================================================
 
+// DEPRECATED: usar instancias per-screen via new JornadaKeyboard()
 JornadaKeyboard* JornadaKeyboard::getInstance() {
     if (instance == nullptr) {
         instance = new JornadaKeyboard();
     }
     return instance;
+}
+
+void JornadaKeyboard::setStatusBar(StatusBar* bar) {
+    statusBar_ = bar;
 }
 
 // ============================================================================
@@ -240,17 +247,20 @@ void JornadaKeyboard::createKeyboard() {
     };
     
     // Preparar definições de botões para criação em lote
+    // Lambda captura 'self' para resolver instancia sem getInstance()
+    JornadaKeyboard* self = this;
+
     for (int i = 0; i < 12; i++) {
         TipoAcao acao = acoes[i];
         int x = positions[i][0];
         int y = positions[i][1];
-        
+
         // Atualizar dados do botão
         botoes[acao].tipo = acao;
         botoes[acao].label = getLabelForAction(acao);
         botoes[acao].icon = getIconForAction(acao);
         botoes[acao].color = getColorForAction(acao);
-        
+
         // Adicionar à lista de definições
         ButtonManager::ButtonBatchDef def;
         def.gridX = x;
@@ -259,12 +269,22 @@ void JornadaKeyboard::createKeyboard() {
         def.icon = botoes[acao].icon;
         def.image_src = getImagePathForAction(acao);
         def.color = botoes[acao].color;
-        def.callback = onActionButtonClick;
+        // Lambda com captura de self (per-screen instance, sem singleton)
+        def.callback = [self](int buttonId) {
+            // Encontra qual acao foi clicada
+            for (int i = 0; i < ACAO_MAX; i++) {
+                if (self->botoes[i].buttonId == buttonId) {
+                    playAudioFile("/click.mp3");
+                    self->showMotoristaSelection(self->botoes[i].tipo);
+                    break;
+                }
+            }
+        };
         def.width = 1;
         def.height = 1;
         def.textColor = lv_color_hex(0xFFFFFF);
         def.textFont = &lv_font_montserrat_16;
-        
+
         buttonDefs.push_back(def);
     }
     
@@ -365,11 +385,13 @@ void JornadaKeyboard::createKeyboard() {
     
     // Atualizar todos os indicadores para mostrar estado atual
     atualizarTodosIndicadores();
-    
-    // Atualizar mensagem de status
-    btnManager->setStatusMessage("Selecione uma acao",
-                                lv_color_hex(0x888888),
-                                &lv_font_montserrat_16);
+
+    // Atualizar mensagem de status via StatusBar persistente
+    if (statusBar_) {
+        statusBar_->setMessage("Selecione uma acao",
+                               lv_color_hex(0x888888),
+                               &lv_font_montserrat_16);
+    }
     
     esp_rom_printf("\n==============================================");
     esp_rom_printf("  TECLADO DE JORNADA PRONTO PARA USO");
@@ -622,12 +644,13 @@ void JornadaKeyboard::showMotoristaSelection(TipoAcao acao) {
     lv_obj_set_style_radius(popupBox, 15, LV_PART_MAIN);
     lv_obj_clear_flag(popupBox, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Botão X (cancelar)
+    // Botão X (cancelar) - armazena this como user_data no obj para resolver instancia
     lv_obj_t* btnCancel = lv_btn_create(popupBox);
     lv_obj_set_size(btnCancel, 30, 30);
-    lv_obj_align(btnCancel, LV_ALIGN_BOTTOM_MID, 10, 10); 
+    lv_obj_align(btnCancel, LV_ALIGN_BOTTOM_MID, 10, 10);
     lv_obj_set_style_bg_color(btnCancel, lv_color_hex(0xFF0000), LV_PART_MAIN);
     lv_obj_set_style_radius(btnCancel, 5, LV_PART_MAIN);
+    lv_obj_set_user_data(btnCancel, this);
     lv_obj_add_event_cb(btnCancel, onCancelPopupClick, LV_EVENT_CLICKED, nullptr);
     
     lv_obj_t* labelX = lv_label_create(btnCancel);
@@ -660,15 +683,17 @@ void JornadaKeyboard::showMotoristaSelection(TipoAcao acao) {
     for (int i = 0; i < 3; i++) {
         lv_obj_t* btnMotorista = lv_btn_create(btnContainer);
         lv_obj_set_size(btnMotorista, 280, 40);
-        
+
         // Verificar estado do motorista NESTE BOTÃO específico
         bool estaLogado = botoes[acao].motoristas[i].logado;
-        
+
         // Cores simples: Verde = logado, Azul = não logado
         lv_color_t corBotao = estaLogado ? lv_color_hex(0x00AA00) : lv_color_hex(0x0088FF);
         lv_obj_set_style_bg_color(btnMotorista, corBotao, LV_PART_MAIN);
-        
-        // Adicionar callback com o índice do motorista
+
+        // Armazena this como user_data no obj para resolver instancia sem getInstance()
+        lv_obj_set_user_data(btnMotorista, this);
+        // Adicionar callback com o índice do motorista via event user_data
         lv_obj_add_event_cb(btnMotorista, onMotoristaSelectClick, LV_EVENT_CLICKED, (void*)(intptr_t)i);
         
         // Label do botão simples
@@ -710,29 +735,33 @@ void JornadaKeyboard::processarAcao(int motorista, TipoAcao acao) {
     if (estaLogado) {
         // Deslogar motorista deste botão
         deslogarMotorista(acao, motorista);
-        
+
         char msg[100];
-        snprintf(msg, sizeof(msg), "Motorista %d: %s DESATIVADO", 
+        snprintf(msg, sizeof(msg), "Motorista %d: %s DESATIVADO",
                  motorista + 1, getLabelForAction(acao));
-        
-        btnManager->setStatusMessage(msg,
-                                    lv_color_hex(0xFFAA00), // Laranja
-                                    &lv_font_montserrat_18,
-                                    3000);
+
+        if (statusBar_) {
+            statusBar_->setMessage(msg,
+                                   lv_color_hex(0xFFAA00), // Laranja
+                                   &lv_font_montserrat_18,
+                                   3000);
+        }
         playAudioFile("/nok_click.mp3");
-        
+
     } else {
         // Logar motorista neste botão
         logarMotorista(acao, motorista);
-        
+
         char msg[100];
-        snprintf(msg, sizeof(msg), "Motorista %d: %s ATIVADO", 
+        snprintf(msg, sizeof(msg), "Motorista %d: %s ATIVADO",
                  motorista + 1, getLabelForAction(acao));
 
-        btnManager->setStatusMessage(msg,
-                                    lv_color_hex(0x00FF00), // Verde
-                                    &lv_font_montserrat_18,
-                                    3000);
+        if (statusBar_) {
+            statusBar_->setMessage(msg,
+                                   lv_color_hex(0x00FF00), // Verde
+                                   &lv_font_montserrat_18,
+                                   3000);
+        }
         playAudioFile("/ok_click.mp3");
     }
     
@@ -784,44 +813,47 @@ EstadoMotorista JornadaKeyboard::getEstadoMotorista(TipoAcao acao, int motorista
 // CALLBACKS
 // ============================================================================
 
+// DEPRECATED: substituido por lambda em createKeyboard(). Mantido para compatibilidade.
 void JornadaKeyboard::onActionButtonClick(int buttonId) {
+    ESP_LOGW(TAG, "onActionButtonClick: chamada via funcao estatica (deprecated)");
     JornadaKeyboard* jornada = getInstance();
     if (!jornada) return;
-    
-    // Identificar qual ação foi clicada
-    TipoAcao acaoClicada = ACAO_JORNADA;
-    bool encontrado = false;
-    
+
     for (int i = 0; i < ACAO_MAX; i++) {
         if (jornada->botoes[i].buttonId == buttonId) {
-            acaoClicada = jornada->botoes[i].tipo;
-            encontrado = true;
+            playAudioFile("/click.mp3");
+            jornada->showMotoristaSelection(jornada->botoes[i].tipo);
             break;
         }
-    }
-    
-    if (encontrado) {
-        playAudioFile("/click.mp3");
-        jornada->showMotoristaSelection(acaoClicada);
     }
 }
 
 void JornadaKeyboard::onMotoristaSelectClick(lv_event_t* e) {
     int motorista = (int)(intptr_t)lv_event_get_user_data(e);
-    
-    JornadaKeyboard* jornada = getInstance();
-    if (!jornada) return;
-    
+
+    // Resolve instancia via lv_obj user_data (per-screen, sem getInstance())
+    lv_obj_t* target = lv_event_get_target(e);
+    JornadaKeyboard* jornada = static_cast<JornadaKeyboard*>(lv_obj_get_user_data(target));
+    if (!jornada) {
+        ESP_LOGE(TAG, "onMotoristaSelectClick: null user_data no botao");
+        return;
+    }
+
     jornada->processarAcao(motorista, jornada->acaoPendente);
     jornada->closeMotoristaSelection();
 }
 
 void JornadaKeyboard::onCancelPopupClick(lv_event_t* e) {
-    JornadaKeyboard* jornada = getInstance();
-    if (jornada) {
-        playAudioFile("/nok_click.mp3");
-        jornada->closeMotoristaSelection();
+    // Resolve instancia via lv_obj user_data (per-screen, sem getInstance())
+    lv_obj_t* target = lv_event_get_target(e);
+    JornadaKeyboard* jornada = static_cast<JornadaKeyboard*>(lv_obj_get_user_data(target));
+    if (!jornada) {
+        ESP_LOGE(TAG, "onCancelPopupClick: null user_data no botao");
+        return;
     }
+
+    playAudioFile("/nok_click.mp3");
+    jornada->closeMotoristaSelection();
 }
 
 // ... O restante do arquivo (ScreenManager e funções globais) permanece inalterado ...

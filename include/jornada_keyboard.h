@@ -11,6 +11,9 @@
 #include <string>
 #include <array>
 
+// Forward declaration
+class StatusBar;
+
 // ============================================================================
 // ENUMS E ESTRUTURAS
 // ============================================================================
@@ -54,19 +57,21 @@ struct BotaoJornada {
 class JornadaKeyboard {
 private:
     ButtonManager* btnManager;
-    
+    StatusBar* statusBar_;
+
     // Botões da jornada - cada um com seus próprios motoristas
     std::array<BotaoJornada, ACAO_MAX> botoes;
-    
+
     // Popup de seleção de motorista
     lv_obj_t* popupMotorista;
     TipoAcao acaoPendente;
-    
-    // Singleton
+
+    // DEPRECATED: usar instancias per-screen via new JornadaKeyboard()
     static JornadaKeyboard* instance;
-    
-    // Callbacks
-    static void onActionButtonClick(int buttonId);
+
+    // Callbacks (static porque LVGL requer ponteiros de funcao C-compatible)
+    // Resolvem instancia via lv_obj user_data, nao via getInstance()
+    static void onActionButtonClick(int buttonId);  // DEPRECATED: substituido por lambda
     static void onMotoristaSelectClick(lv_event_t* e);
     static void onCancelPopupClick(lv_event_t* e);
     
@@ -90,9 +95,12 @@ private:
 public:
     JornadaKeyboard();
     ~JornadaKeyboard();
-    
-    // Singleton
+
+    // DEPRECATED: usar instancias per-screen via new JornadaKeyboard()
     static JornadaKeyboard* getInstance();
+
+    // StatusBar persistente (para mensagens de status)
+    void setStatusBar(StatusBar* bar);
     
     // Inicialização
     void init();

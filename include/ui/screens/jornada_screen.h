@@ -25,6 +25,7 @@
 // Forward declarations
 class JornadaKeyboard;
 class ButtonManager;
+class StatusBar;
 
 /**
  * Tela de jornada: grade 4x3 de botoes de acao para motoristas.
@@ -48,6 +49,9 @@ public:
     void onExit() override;
     lv_obj_t* getLvScreen() const override;
     void invalidate() override;
+
+    // StatusBar persistente (repassa para JornadaKeyboard)
+    void setStatusBar(StatusBar* bar);
 
 private:
     // Tela LVGL

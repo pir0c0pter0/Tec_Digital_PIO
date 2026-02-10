@@ -54,10 +54,11 @@ void JornadaScreen::create() {
 
     // Cria ButtonManager proprio desta tela (isolamento total)
     btnManager_ = new ButtonManager();
-    jornadaKb_ = JornadaKeyboard::getInstance();
+    // Instancia per-screen (sem singleton) para isolamento total
+    jornadaKb_ = new JornadaKeyboard();
 
     if (!btnManager_ || !jornadaKb_) {
-        ESP_LOGE(TAG, "Falha ao criar ButtonManager ou obter JornadaKeyboard");
+        ESP_LOGE(TAG, "Falha ao criar ButtonManager ou JornadaKeyboard");
         return;
     }
 
@@ -84,9 +85,12 @@ void JornadaScreen::destroy() {
 
     ESP_LOGI(TAG, "Destruindo JornadaScreen...");
 
-    // Limpa o teclado de jornada (para animacoes, remove botoes)
+    // Limpa e deleta JornadaKeyboard ANTES do ButtonManager
+    // (JornadaKeyboard pode referenciar objetos do ButtonManager)
     if (jornadaKb_) {
         jornadaKb_->clearKeyboard();
+        delete jornadaKb_;
+        jornadaKb_ = nullptr;
     }
 
     // Deleta o ButtonManager proprio desta tela (deleta screen LVGL e botoes)
@@ -141,6 +145,12 @@ lv_obj_t* JornadaScreen::getLvScreen() const {
 // ============================================================================
 // METODOS INTERNOS
 // ============================================================================
+
+void JornadaScreen::setStatusBar(StatusBar* bar) {
+    if (jornadaKb_) {
+        jornadaKb_->setStatusBar(bar);
+    }
+}
 
 void JornadaScreen::invalidate() {
     screen_ = nullptr;
