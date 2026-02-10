@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 3 of 5 (Settings + Config Sync)
-Plan: 1 of 3 in current phase (03-01 SettingsScreen + NVS driver names complete)
+Plan: 2 of 3 in current phase (03-02 GATT Configuration Service complete)
 Status: Executing Phase 03
-Last activity: 2026-02-10 -- 03-01-PLAN.md complete (SettingsScreen UI + NVS driver name persistence)
+Last activity: 2026-02-10 -- 03-02-PLAN.md complete (GATT Config Service + config event queue)
 
-Progress: [████████████░░░░░░░░] 60%
+Progress: [█████████████░░░░░░░] 65%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 5 min
-- Total execution time: 1.12 hours
+- Total execution time: 1.25 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [████████████░░░░░░░░] 60%
 | 01-foundation | 4 | 15 min | 4 min |
 | 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
 | 02-ble-core | 4 | 27 min | 7 min |
-| 03-settings | 1 | 7 min | 7 min |
+| 03-settings | 2 | 15 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (8min), 02-02 (7min), 02-03 (8min), 02-04 (4min), 03-01 (7min)
-- Trend: Consistent 7min for UI+NVS work with pre-existing build fix
+- Last 5 plans: 02-02 (7min), 02-03 (8min), 02-04 (4min), 03-01 (7min), 03-02 (8min)
+- Trend: Consistent 7-8min for GATT service creation
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -50,6 +50,7 @@ Progress: [████████████░░░░░░░░] 60%
 | 02 | P03 | 8min | 2 tasks | 4 files |
 | 02 | P04 | 4min | 2 tasks | 5 files |
 | 03 | P01 | 7min | 2 tasks | 8 files |
+| 03 | P02 | 8min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,10 @@ Recent decisions affecting current work:
 - [Phase 03-01]: display.h include for bsp_display_brightness_set (not esp_bsp.h) -- function declared in display.h
 - [Phase 03-01]: nvs_set_str for driver names (not blob) -- handles null-termination correctly
 - [Phase 03-01]: 1000ms info refresh throttle -- system info labels dont need 5ms update rate
+- [Phase 03-02]: Config event queue follows ble_event_queue pattern (FreeRTOS, 8 items, non-blocking)
+- [Phase 03-02]: Driver name BLE format: 1 byte id (1-3) + up to 32 bytes name; internally maps to 0-2
+- [Phase 03-02]: Out-of-range values rejected with BLE_ATT_ERR_VALUE_NOT_ALLOWED (0x13)
+- [Phase 03-02]: Time sync write-only (no read) -- timestamp flows one-way from app to device
 
 ### Pending Todos
 
@@ -114,5 +119,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 03-01-PLAN.md (SettingsScreen + NVS driver names). Phase 03 in progress (1 of 3 plans done).
-Resume file: .planning/phases/03-settings/03-02-PLAN.md
+Stopped at: Completed 03-02-PLAN.md (GATT Configuration Service + config event queue). Phase 03 in progress (2 of 3 plans done).
+Resume file: .planning/phases/03-settings/03-03-PLAN.md
