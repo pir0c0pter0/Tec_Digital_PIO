@@ -118,13 +118,6 @@ struct GridButton {
     bool enabled;
 };
 
-struct BtnStatusBarData {
-    bool ignicaoOn;
-    unsigned long tempoIgnicao;
-    unsigned long tempoJornada;
-    const char* mensagemExtra;
-};
-
 // ============================================================================
 // CLASSE BUTTONMANAGER
 // ============================================================================
@@ -132,28 +125,11 @@ struct BtnStatusBarData {
 class ButtonManager {
 private:
     static ButtonManager* instance;
-    
+
     // Elementos de UI
     lv_obj_t* screen;
     lv_obj_t* gridContainer;
-    lv_obj_t* statusBar;
-    lv_obj_t* statusIgnicao;
-    lv_obj_t* statusTempoIgnicao;
-    lv_obj_t* statusTempoJornada;
-    lv_obj_t* statusMensagem;
-    lv_timer_t* statusUpdateTimer;
-    lv_timer_t* statusTimer;
-    
-    // Sistema de mensagens
-    struct MessageConfig {
-        lv_color_t color;
-        const lv_font_t* font;
-        uint32_t timeoutMs;
-        bool hasTimeout;
-    } currentMessageConfig;
-    
-    unsigned long messageExpireTime;
-    
+
     // Sistema de popup
     lv_obj_t* activePopup;
     std::function<void(PopupResult)> popupCallback;
@@ -211,8 +187,6 @@ private:
     
     static void buttonEventHandler(lv_event_t* e);
     static void popupButtonHandler(lv_event_t* e);
-    static void statusUpdateCallback(lv_timer_t* timer);
-    static void statusTimerHandler(lv_timer_t* timer);
     
 public:
     ButtonManager();
@@ -279,18 +253,6 @@ public:
     
     GridButton* getButton(int buttonId);
     
-    // Barra de status
-    void updateStatusBar(const BtnStatusBarData& data);
-    void setStatusMessage(const char* message);
-    void setStatusMessage(const char* message, lv_color_t color,
-                         const lv_font_t* font = &lv_font_montserrat_20,
-                         uint32_t timeoutMs = 0);
-    void clearStatusMessage();
-    void setDefaultMessageTimeout(uint32_t timeoutMs);
-    
-    void startStatusTimer(int intervalMs);
-    void stopStatusTimer();
-    
     // Sistema de popup
     /**
      * Cria overlay escuro para popup, respeitando a StatusBar.
@@ -312,15 +274,10 @@ public:
 };
 
 // ============================================================================
-// FUNÇÕES HELPER GLOBAIS
+// FUNÇÕES HELPER GLOBAIS (mantidas por uso externo)
 // ============================================================================
 
-void initButtonManager();
-void updateBtnManagerButtons(bool ignicaoOn);
-void updateBtnManagerStatus();
-void updateBtnManagerStatusBar();
 const char* formatTime(unsigned long timeMs);
 lv_color_t getStateColor(int state);
-void createDefaultJornadaButtons();
 
 #endif // BUTTON_MANAGER_H

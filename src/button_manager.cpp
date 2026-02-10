@@ -5,8 +5,6 @@
  */
 
 #include "button_manager.h"
-#include "jornada_manager.h"
-#include "ignicao_control.h"
 #include "esp_bsp.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -38,14 +36,6 @@ ButtonManager* ButtonManager::instance = nullptr;
 ButtonManager::ButtonManager() :
     screen(nullptr),
     gridContainer(nullptr),
-    statusBar(nullptr),
-    statusIgnicao(nullptr),
-    statusTempoIgnicao(nullptr),
-    statusTempoJornada(nullptr),
-    statusMensagem(nullptr),
-    statusUpdateTimer(nullptr),
-    statusTimer(nullptr),
-    messageExpireTime(0),
     activePopup(nullptr),
     lastPopupResult(POPUP_RESULT_NONE),
     nextButtonId(1),
@@ -53,13 +43,7 @@ ButtonManager::ButtonManager() :
     lastButtonClickedId_(-1),
     lastPopupClickTime_(0),
     retryTimer(nullptr) {
-    
-    // Inicializar configuração de mensagem
-    currentMessageConfig.color = lv_color_hex(0x888888);
-    currentMessageConfig.font = &lv_font_montserrat_20;
-    currentMessageConfig.timeoutMs = 0;
-    currentMessageConfig.hasTimeout = false;
-    
+
     // Criar mutex para sincronização
     creationMutex = xSemaphoreCreateMutex();
     
@@ -77,14 +61,6 @@ ButtonManager::~ButtonManager() {
         if (retryTimer) {
             lv_timer_del(retryTimer);
             retryTimer = nullptr;
-        }
-        if (statusUpdateTimer) {
-            lv_timer_del(statusUpdateTimer);
-            statusUpdateTimer = nullptr;
-        }
-        if (statusTimer) {
-            lv_timer_del(statusTimer);
-            statusTimer = nullptr;
         }
 
         // Limpar botoes (libera capturas de std::function antes de deletar objetos LVGL)
@@ -149,67 +125,18 @@ void ButtonManager::createScreen() {
 
         screen = lv_obj_create(NULL);
         lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), LV_PART_MAIN);
-        
+
+        // gridContainer posicionado abaixo da StatusBar persistente (lv_layer_top)
         gridContainer = lv_obj_create(screen);
         lv_obj_set_size(gridContainer, SCREEN_WIDTH, GRID_AREA_HEIGHT);
-        lv_obj_align(gridContainer, LV_ALIGN_TOP_LEFT, 0, 0);
+        lv_obj_align(gridContainer, LV_ALIGN_TOP_LEFT, 0, STATUS_BAR_HEIGHT);
         lv_obj_set_style_bg_color(gridContainer, lv_color_hex(0x2a2a2a), LV_PART_MAIN);
         lv_obj_set_style_border_width(gridContainer, 0, LV_PART_MAIN);
         lv_obj_set_style_pad_all(gridContainer, GRID_PADDING, LV_PART_MAIN);
         lv_obj_clear_flag(gridContainer, LV_OBJ_FLAG_SCROLLABLE);
-        
-        statusBar = lv_obj_create(screen);
-        lv_obj_set_size(statusBar, SCREEN_WIDTH, STATUS_BAR_HEIGHT);
-        lv_obj_align(statusBar, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-        lv_obj_set_style_bg_color(statusBar, lv_color_hex(0x000000), LV_PART_MAIN);
-        lv_obj_set_style_border_width(statusBar, 0, LV_PART_MAIN);
-        lv_obj_set_style_border_side(statusBar, LV_BORDER_SIDE_TOP, LV_PART_MAIN);
-        lv_obj_set_style_border_color(statusBar, lv_color_hex(0x4a4a4a), LV_PART_MAIN);
-        lv_obj_set_style_border_width(statusBar, 2, LV_PART_MAIN);
-        lv_obj_clear_flag(statusBar, LV_OBJ_FLAG_SCROLLABLE);
-        
-        lv_obj_t* ignContainer = lv_obj_create(statusBar);
-        lv_obj_set_size(ignContainer, 30, 30);
-        lv_obj_align(ignContainer, LV_ALIGN_LEFT_MID, 10, 0);
-        lv_obj_set_style_radius(ignContainer, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(ignContainer, lv_color_hex(0xFF0000), LV_PART_MAIN);
-        lv_obj_set_style_border_width(ignContainer, 2, LV_PART_MAIN);
-        lv_obj_set_style_border_color(ignContainer, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-        lv_obj_clear_flag(ignContainer, LV_OBJ_FLAG_SCROLLABLE);
-        
-        statusIgnicao = lv_label_create(ignContainer);
-        lv_label_set_text(statusIgnicao, "OFF");
-        lv_obj_center(statusIgnicao);
-        lv_obj_set_style_text_color(statusIgnicao, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-        lv_obj_set_style_text_font(statusIgnicao, &lv_font_montserrat_10, LV_PART_MAIN);
-        
-        statusTempoIgnicao = lv_label_create(statusBar);
-        lv_label_set_text(statusTempoIgnicao, "");
-        lv_obj_align(statusTempoIgnicao, LV_ALIGN_LEFT_MID, 55, 0);
-        lv_obj_set_style_text_color(statusTempoIgnicao, lv_color_hex(0xCCCCCC), LV_PART_MAIN);
-        lv_obj_set_style_text_font(statusTempoIgnicao, &lv_font_montserrat_12, LV_PART_MAIN);
-        
-        statusTempoJornada = lv_label_create(statusBar);
-        lv_label_set_text(statusTempoJornada, "");
-        lv_obj_align(statusTempoJornada, LV_ALIGN_CENTER, 0, 0);
-        lv_obj_set_style_text_color(statusTempoJornada, lv_color_hex(0xCCCCCC), LV_PART_MAIN);
-        lv_obj_set_style_text_font(statusTempoJornada, &lv_font_montserrat_12, LV_PART_MAIN);
-        
-        statusMensagem = lv_label_create(statusBar);
-        lv_label_set_text(statusMensagem, "");
-        lv_obj_align(statusMensagem, LV_ALIGN_CENTER, -30, 0);
-        lv_obj_set_width(statusMensagem, 250);  
-        lv_label_set_long_mode(statusMensagem, LV_LABEL_LONG_DOT);
-        lv_obj_set_style_text_align(statusMensagem, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-        lv_obj_set_style_text_color(statusMensagem, lv_color_hex(0x888888), LV_PART_MAIN);
-        lv_obj_set_style_text_font(statusMensagem, &lv_font_montserrat_20, LV_PART_MAIN);
-        
+
         // Nota: NAO carregar o screen aqui -- o ScreenManager controla transicoes
 
-        if (!statusUpdateTimer) {
-            statusUpdateTimer = lv_timer_create(statusUpdateCallback, 250, this);
-        }
-        
         bsp_display_unlock();
         
         esp_rom_printf("Button Manager screen created");
@@ -795,135 +722,13 @@ const char* ButtonManager::getIconText(ButtonIcon icon) {
 }
 
 // ============================================================================
-// BARRA DE STATUS
-// ============================================================================
-
-void ButtonManager::updateStatusBar(const BtnStatusBarData& data) {
-    if (!statusBar) return;
-    
-    if (bsp_display_lock(100)) {
-        if (statusIgnicao) {
-            lv_obj_t* parent = lv_obj_get_parent(statusIgnicao);
-            if (data.ignicaoOn) {
-                lv_obj_set_style_bg_color(parent, lv_color_hex(0x00FF00), LV_PART_MAIN);
-                lv_label_set_text(statusIgnicao, "ON");
-            } else {
-                lv_obj_set_style_bg_color(parent, lv_color_hex(0xFF0000), LV_PART_MAIN);
-                lv_label_set_text(statusIgnicao, "OFF");
-            }
-        }
-        
-        if (statusTempoIgnicao) {
-            if (data.ignicaoOn && data.tempoIgnicao > 0) {
-                char buffer[32];
-                snprintf(buffer, sizeof(buffer), "Ignicao: %s", formatTime(data.tempoIgnicao));
-                lv_label_set_text(statusTempoIgnicao, buffer);
-            } else {
-                lv_label_set_text(statusTempoIgnicao, "");
-            }
-        }
-        
-        if (statusTempoJornada) {
-            if (data.tempoJornada > 0) {
-                char buffer[32];
-                snprintf(buffer, sizeof(buffer), "Jornada M1: %s", formatTime(data.tempoJornada));
-                lv_label_set_text(statusTempoJornada, buffer);
-            } else {
-                lv_label_set_text(statusTempoJornada, "");
-            }
-        }
-        
-        if (statusMensagem) {
-            if (data.mensagemExtra && strlen(data.mensagemExtra) > 0) {
-                lv_label_set_text(statusMensagem, data.mensagemExtra);
-            }
-        }
-        
-        bsp_display_unlock();
-    }
-}
-
-// ============================================================================
-// SISTEMA DE MENSAGENS
-// ============================================================================
-
-void ButtonManager::statusUpdateCallback(lv_timer_t* timer) {
-    ButtonManager* mgr = (ButtonManager*)timer->user_data;
-    if (!mgr) return;
-
-    // Lógica para expiração da mensagem de status
-    if (mgr->messageExpireTime > 0 && millis() >= mgr->messageExpireTime) {
-        mgr->clearStatusMessage();
-        mgr->messageExpireTime = 0;
-    }
-}
-
-void ButtonManager::setStatusMessage(const char* message) {
-    setStatusMessage(message, lv_color_hex(0x888888), &lv_font_montserrat_20, 0);
-}
-
-void ButtonManager::setStatusMessage(const char* message, 
-                                    lv_color_t color,
-                                    const lv_font_t* font,
-                                    uint32_t timeoutMs) {
-    if (!statusMensagem) return;
-    
-    if (bsp_display_lock(100)) {
-        lv_label_set_text(statusMensagem, message ? message : "");
-        lv_obj_set_style_text_color(statusMensagem, color, LV_PART_MAIN);
-        lv_obj_set_style_text_font(statusMensagem, font, LV_PART_MAIN);
-        
-        if (timeoutMs > 0 && message && strlen(message) > 0) {
-            messageExpireTime = millis() + timeoutMs;
-        } else {
-            messageExpireTime = 0;
-        }
-        
-        bsp_display_unlock();
-    }
-}
-
-void ButtonManager::clearStatusMessage() {
-    if (!statusMensagem) return;
-    
-    messageExpireTime = 0;
-    
-    if (bsp_display_lock(100)) {
-        lv_label_set_text(statusMensagem, "");
-        bsp_display_unlock();
-    }
-}
-
-void ButtonManager::setDefaultMessageTimeout(uint32_t timeoutMs) {
-    currentMessageConfig.timeoutMs = timeoutMs;
-    currentMessageConfig.hasTimeout = (timeoutMs > 0);
-}
-
-void ButtonManager::statusTimerHandler(lv_timer_t* timer) {
-}
-
-void ButtonManager::startStatusTimer(int intervalMs) {
-    if (statusTimer) {
-        lv_timer_del(statusTimer);
-    }
-    statusTimer = lv_timer_create(statusTimerHandler, intervalMs, this);
-}
-
-void ButtonManager::stopStatusTimer() {
-    if (statusTimer) {
-        lv_timer_del(statusTimer);
-        statusTimer = nullptr;
-    }
-}
-
-// ============================================================================
 // SISTEMA DE POPUP
 // ============================================================================
 
 lv_obj_t* ButtonManager::createPopupOverlay() {
     lv_obj_t* overlay = lv_obj_create(screen);
     lv_obj_set_size(overlay, SCREEN_WIDTH, GRID_AREA_HEIGHT);
-    lv_obj_align(overlay, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_align(overlay, LV_ALIGN_TOP_LEFT, 0, STATUS_BAR_HEIGHT);
     lv_obj_set_style_bg_color(overlay, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_70, LV_PART_MAIN);
     lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
@@ -1153,34 +958,23 @@ void ButtonManager::printGridOccupancy() {
 }
 
 // ============================================================================
-// FUNÇÕES HELPER GLOBAIS (EXEMPLO)
+// FUNÇÕES HELPER GLOBAIS (mantidas por uso externo)
 // ============================================================================
-
-extern "C" void playAudioFile(const char* filename);
-
-void initButtonManager() {
-    esp_rom_printf("Inicializando Button Manager...");
-    
-    ButtonManager* btnManager = ButtonManager::getInstance();
-    btnManager->init();
-    
-    esp_rom_printf("Button Manager inicializado!");
-}
 
 const char* formatTime(unsigned long timeMs) {
     static char buffer[16];
     unsigned long seconds = timeMs / 1000;
     unsigned long minutes = seconds / 60;
     unsigned long hours = minutes / 60;
-    
+
     if (hours > 0) {
-        snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", 
+        snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu",
                  hours, minutes % 60, seconds % 60);
     } else {
-        snprintf(buffer, sizeof(buffer), "%02lu:%02lu", 
+        snprintf(buffer, sizeof(buffer), "%02lu:%02lu",
                  minutes, seconds % 60);
     }
-    
+
     return buffer;
 }
 
@@ -1195,65 +989,6 @@ lv_color_t getStateColor(int state) {
         default: return lv_color_hex(0x666666);
     }
 }
-
-void createDefaultJornadaButtons() {
-    ButtonManager* mgr = ButtonManager::getInstance();
-    
-    mgr->addButton(0, 0, "JORNADA", ButtonIcon::ICON_TRUCK, nullptr,
-                   lv_color_hex(0x00AA00), nullptr, 2, 1);
-    
-    mgr->addButton(2, 0, "MANOBRA", ButtonIcon::ICON_STEERING, nullptr,
-                   lv_color_hex(0x0088FF), nullptr, 2, 1);
-    
-    mgr->addButton(0, 1, "REFEICAO", ButtonIcon::ICON_FOOD, nullptr,
-                   lv_color_hex(0xFF8800), nullptr, 2, 1);
-    
-    mgr->addButton(2, 1, "ESPERA", ButtonIcon::ICON_CLOCK, nullptr,
-                   lv_color_hex(0xFFAA00), nullptr, 2, 1);
-    
-    mgr->addButton(0, 2, "DESCARGA", ButtonIcon::ICON_BOX, nullptr,
-                   lv_color_hex(0xAA00AA), nullptr, 2, 1);
-    
-    mgr->addButton(2, 2, "ABASTEC.", ButtonIcon::ICON_FUEL, nullptr,
-                   lv_color_hex(0x00AAAA), nullptr, 2, 1);
-}
-
-// ============================================================================
-// WRAPPERS EXTERN C PARA CHAMADAS DE main.cpp
-// ============================================================================
-
-// Variável global para acesso externo
-void* btnManager = nullptr;
-void* screenManager = nullptr;
-
-extern "C" {
-
-void buttonManagerInit(void) {
-    esp_rom_printf("Inicializando Button Manager (extern C)...\n");
-    ButtonManager* mgr = ButtonManager::getInstance();
-    mgr->init();
-    btnManager = static_cast<void*>(mgr);
-    esp_rom_printf("Button Manager inicializado!\n");
-}
-
-void* buttonManagerGetInstance(void) {
-    return static_cast<void*>(ButtonManager::getInstance());
-}
-
-void buttonManagerUpdateStatusBar(bool ignicaoOn, uint32_t tempoIgnicao, uint32_t tempoJornada, const char* msg) {
-    ButtonManager* mgr = ButtonManager::getInstance();
-    if (mgr) {
-        BtnStatusBarData data = {
-            .ignicaoOn = ignicaoOn,
-            .tempoIgnicao = tempoIgnicao,
-            .tempoJornada = tempoJornada,
-            .mensagemExtra = msg
-        };
-        mgr->updateStatusBar(data);
-    }
-}
-
-} // extern "C"
 
 // ============================================================================
 // FIM DA IMPLEMENTAÇÃO

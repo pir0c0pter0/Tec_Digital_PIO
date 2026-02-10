@@ -670,20 +670,12 @@ void showNumpad() {
     numpad->createNumpad();
 }
 
-// DEPRECATED: usar ScreenManagerImpl para esconder tela numpad
+// DEPRECATED: sera removido na proxima tarefa de limpeza
 void hideNumpad() {
     esp_rom_printf("Escondendo teclado numerico");
-    
+
     NumpadExample* numpad = NumpadExample::getInstance();
     numpad->clearNumpad();
-    
-    ButtonManager* mgr = ButtonManager::getInstance();
-    if (mgr) {
-        mgr->setStatusMessage("Teclado fechado",
-                            lv_color_hex(0x888888),  // Cinza
-                            &lv_font_montserrat_16,   // Tamanho médio
-                            2000);                    // 2 segundos
-    }
 }
 
 // ============================================================================
