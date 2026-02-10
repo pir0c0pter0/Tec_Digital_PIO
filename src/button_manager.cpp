@@ -73,7 +73,7 @@ ButtonManager::ButtonManager() :
 
 ButtonManager::~ButtonManager() {
     if (bsp_display_lock(200)) {
-        // Limpar timers LVGL (requer display lock)
+        // Deleta timers primeiro (evita callbacks em objetos deletados)
         if (retryTimer) {
             lv_timer_del(retryTimer);
             retryTimer = nullptr;
@@ -87,11 +87,16 @@ ButtonManager::~ButtonManager() {
             statusTimer = nullptr;
         }
 
-        // Limpar botoes (sem deletar objetos LVGL — a tela pai sera deletada abaixo)
+        // Limpar botoes (libera capturas de std::function antes de deletar objetos LVGL)
         buttons.clear();
 
-        // Deletar screen LVGL (deleta todos os filhos: gridContainer, statusBar, botoes)
-        if (screen != nullptr && screen != lv_scr_act()) {
+        // Sempre deleta o screen LVGL (LVGL 8.4.0 suporta deletar tela ativa)
+        if (screen != nullptr) {
+            if (screen == lv_scr_act()) {
+                // Caso extremo: cria tela temporaria antes de deletar a ativa
+                lv_obj_t* blank = lv_obj_create(NULL);
+                lv_scr_load(blank);
+            }
             lv_obj_del(screen);
         }
         screen = nullptr;
@@ -99,7 +104,7 @@ ButtonManager::~ButtonManager() {
         bsp_display_unlock();
     }
 
-    // Deletar mutex
+    // Deletar mutex (fora do display lock para evitar deadlock)
     if (creationMutex) {
         vSemaphoreDelete(creationMutex);
         creationMutex = nullptr;
