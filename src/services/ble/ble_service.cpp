@@ -15,6 +15,7 @@
 #include "services/ble/ble_event_queue.h"
 #include "services/ble/gatt/gatt_server.h"
 #include "services/ble/gatt/gatt_journey.h"
+#include "services/ble/gatt/gatt_config.h"
 #include "config/app_config.h"
 #include "config/ble_uuids.h"
 #include "utils/debug_utils.h"
@@ -311,6 +312,7 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
             self->updateStatus(BleStatus::CONNECTED);
             ble_post_event(BleStatus::CONNECTED, event->connect.conn_handle);
             gatt_journey_set_conn_handle(event->connect.conn_handle);
+            gatt_config_set_conn_handle(event->connect.conn_handle);
 
             // Seguranca sera iniciada pelo central (celular) quando necessario
             // Nao chamamos ble_gap_security_initiate() para evitar conflito com nRF Connect
@@ -329,6 +331,8 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         ble_post_event(BleStatus::DISCONNECTED);
         gatt_journey_set_conn_handle(0);
         gatt_journey_reset_subscriptions();
+        gatt_config_set_conn_handle(0);
+        gatt_config_reset_subscriptions();
 
         // Reinicia advertising
         self->startAdvertisingInternal();
@@ -378,6 +382,10 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         // Rastreia subscricao por caracteristica para notificacoes
         gatt_journey_update_subscription(event->subscribe.attr_handle,
                                          event->subscribe.cur_notify);
+
+        // Roteia subscricoes de config (cada modulo ignora handles que nao sao seus)
+        gatt_config_update_subscription(event->subscribe.attr_handle,
+                                        event->subscribe.cur_notify);
         break;
     }
 
