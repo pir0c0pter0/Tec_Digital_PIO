@@ -17,6 +17,7 @@
 #define UI_STATUS_BAR_H
 
 #include "lvgl.h"
+#include "interfaces/i_ble.h"
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -97,6 +98,16 @@ public:
     lv_obj_t* getContainer() const { return container_; }
 
     /**
+     * Atualiza o icone de status BLE na barra
+     *
+     * DEVE ser chamado apenas do Core 0 (system_task) -- adquire display lock.
+     * Cores: cinza=desconectado, azul=advertising, azul claro=conectado, verde=seguro
+     *
+     * @param status Status atual da conexao BLE
+     */
+    void setBleStatus(BleStatus status);
+
+    /**
      * Define o ponteiro para o gerenciador de telas
      * Usado internamente para o callback do botao trocar tela.
      * @param mgr Ponteiro para IScreenManager
@@ -114,6 +125,7 @@ private:
     lv_obj_t* ignicaoIndicator_;
     lv_obj_t* ignicaoLabel_;
     lv_obj_t* tempoIgnicaoLabel_;
+    lv_obj_t* bleIcon_;
     lv_obj_t* tempoJornadaLabel_;
     lv_obj_t* mensagemLabel_;
 
@@ -122,6 +134,7 @@ private:
 
     // Estado
     uint32_t messageExpireTime_;
+    BleStatus bleStatus_;
 
     // Referencia para o gerenciador de telas (loose coupling)
     IScreenManager* screenManager_;

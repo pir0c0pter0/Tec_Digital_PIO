@@ -34,10 +34,12 @@ StatusBar::StatusBar()
     , ignicaoIndicator_(nullptr)
     , ignicaoLabel_(nullptr)
     , tempoIgnicaoLabel_(nullptr)
+    , bleIcon_(nullptr)
     , tempoJornadaLabel_(nullptr)
     , mensagemLabel_(nullptr)
     , updateTimer_(nullptr)
     , messageExpireTime_(0)
+    , bleStatus_(BleStatus::DISCONNECTED)
     , screenManager_(nullptr)
 {
 }
@@ -103,6 +105,13 @@ void StatusBar::create() {
     lv_obj_set_style_text_color(tempoIgnicaoLabel_, theme->getTextSecondary(), LV_PART_MAIN);
     lv_obj_set_style_text_font(tempoIgnicaoLabel_, &lv_font_montserrat_12, LV_PART_MAIN);
 
+    // ---- Icone BLE (entre ignicao e centro) ----
+    bleIcon_ = lv_label_create(container_);
+    lv_label_set_text(bleIcon_, LV_SYMBOL_BLUETOOTH);
+    lv_obj_align(bleIcon_, LV_ALIGN_LEFT_MID, 130, 0);
+    lv_obj_set_style_text_font(bleIcon_, &lv_font_montserrat_14, LV_PART_MAIN);
+    lv_obj_set_style_text_color(bleIcon_, lv_color_hex(0x666666), LV_PART_MAIN);  // Cinza = desconectado
+
     // ---- Tempo de jornada ----
     tempoJornadaLabel_ = lv_label_create(container_);
     lv_label_set_text(tempoJornadaLabel_, "");
@@ -160,6 +169,7 @@ void StatusBar::destroy() {
         ignicaoIndicator_ = nullptr;
         ignicaoLabel_ = nullptr;
         tempoIgnicaoLabel_ = nullptr;
+        bleIcon_ = nullptr;
         tempoJornadaLabel_ = nullptr;
         mensagemLabel_ = nullptr;
         bsp_display_unlock();
@@ -261,6 +271,38 @@ void StatusBar::setMessage(const char* message, lv_color_t color, const lv_font_
 void StatusBar::clearMessage() {
     setMessage("", lv_color_hex(THEME_TEXT_MUTED), &lv_font_montserrat_20, 0);
     messageExpireTime_ = 0;
+}
+
+// ============================================================================
+// STATUS BLE
+// ============================================================================
+
+void StatusBar::setBleStatus(BleStatus status) {
+    if (!bleIcon_) return;
+    if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT)) return;
+
+    bleStatus_ = status;
+
+    switch (status) {
+        case BleStatus::DISCONNECTED:
+            lv_obj_set_style_text_color(bleIcon_, lv_color_hex(0x666666), LV_PART_MAIN);
+            lv_label_set_text(bleIcon_, LV_SYMBOL_BLUETOOTH);
+            break;
+        case BleStatus::ADVERTISING:
+            lv_obj_set_style_text_color(bleIcon_, lv_color_hex(0x0088FF), LV_PART_MAIN);
+            lv_label_set_text(bleIcon_, LV_SYMBOL_BLUETOOTH);
+            break;
+        case BleStatus::CONNECTED:
+            lv_obj_set_style_text_color(bleIcon_, lv_color_hex(0x00AAFF), LV_PART_MAIN);
+            lv_label_set_text(bleIcon_, LV_SYMBOL_BLUETOOTH);
+            break;
+        case BleStatus::SECURED:
+            lv_obj_set_style_text_color(bleIcon_, lv_color_hex(0x00FF00), LV_PART_MAIN);
+            lv_label_set_text(bleIcon_, LV_SYMBOL_BLUETOOTH);
+            break;
+    }
+
+    bsp_display_unlock();
 }
 
 // ============================================================================
