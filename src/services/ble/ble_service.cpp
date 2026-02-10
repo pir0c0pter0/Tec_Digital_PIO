@@ -14,6 +14,7 @@
 #include "services/ble/ble_service.h"
 #include "services/ble/ble_event_queue.h"
 #include "services/ble/gatt/gatt_server.h"
+#include "services/ble/gatt/gatt_journey.h"
 #include "config/app_config.h"
 #include "config/ble_uuids.h"
 #include "utils/debug_utils.h"
@@ -326,6 +327,7 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
             self->connHandle_ = event->connect.conn_handle;
             self->updateStatus(BleStatus::CONNECTED);
             ble_post_event(BleStatus::CONNECTED, event->connect.conn_handle);
+            gatt_journey_set_conn_handle(event->connect.conn_handle);
 
             // Inicia seguranca (LE Secure Connections)
             int rc = ble_gap_security_initiate(event->connect.conn_handle);
@@ -345,6 +347,8 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         self->currentMtu_ = 23;
         self->updateStatus(BleStatus::DISCONNECTED);
         ble_post_event(BleStatus::DISCONNECTED);
+        gatt_journey_set_conn_handle(0);
+        gatt_journey_reset_subscriptions();
 
         // Reinicia advertising
         self->startAdvertisingInternal();
@@ -390,6 +394,10 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
                  event->subscribe.attr_handle,
                  event->subscribe.cur_notify,
                  event->subscribe.cur_indicate);
+
+        // Rastreia subscricao por caracteristica para notificacoes
+        gatt_journey_update_subscription(event->subscribe.attr_handle,
+                                         event->subscribe.cur_notify);
         break;
     }
 

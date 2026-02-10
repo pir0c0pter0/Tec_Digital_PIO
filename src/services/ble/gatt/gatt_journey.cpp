@@ -13,6 +13,7 @@
  */
 
 #include "services/ble/gatt/gatt_journey.h"
+#include "services/ble/gatt/gatt_server.h"
 #include "services/jornada/jornada_service.h"
 #include "services/ignicao/ignicao_service.h"
 #include "config/app_config.h"
@@ -20,6 +21,7 @@
 
 // NimBLE
 #include "host/ble_hs.h"
+#include "host/ble_gatt.h"
 #include "os/os_mbuf.h"
 
 // ESP-IDF
@@ -32,6 +34,14 @@
 // ============================================================================
 
 static const char* TAG = "GATT_JOURNEY";
+
+// ============================================================================
+// ESTADO DE NOTIFICACAO
+// ============================================================================
+
+static uint16_t active_conn_handle = 0;
+static bool journey_notify_enabled = false;
+static bool ignition_notify_enabled = false;
 
 // ============================================================================
 // EMPACOTAMENTO DE DADOS
@@ -89,6 +99,68 @@ int pack_ignition_data(uint8_t* buf, size_t buf_len) {
     ESP_LOGD(TAG, "Ignition data empacotado: status=%d, duration=%lu ms",
              data->status, (unsigned long)data->duration_ms);
     return static_cast<int>(required);
+}
+
+// ============================================================================
+// FUNCOES DE NOTIFICACAO
+// ============================================================================
+
+void gatt_journey_set_conn_handle(uint16_t handle) {
+    active_conn_handle = handle;
+}
+
+void gatt_journey_update_subscription(uint16_t attr_handle, bool notify) {
+    if (attr_handle == gatt_journey_state_val_handle) {
+        journey_notify_enabled = notify;
+        ESP_LOGI(TAG, "Journey notify %s", notify ? "habilitado" : "desabilitado");
+    } else if (attr_handle == gatt_ignition_val_handle) {
+        ignition_notify_enabled = notify;
+        ESP_LOGI(TAG, "Ignition notify %s", notify ? "habilitado" : "desabilitado");
+    }
+}
+
+void gatt_journey_reset_subscriptions(void) {
+    journey_notify_enabled = false;
+    ignition_notify_enabled = false;
+    ESP_LOGI(TAG, "Subscricoes resetadas");
+}
+
+void notify_journey_state(void) {
+    if (!journey_notify_enabled || active_conn_handle == 0) return;
+
+    uint8_t data[sizeof(JourneyStateData) * MAX_MOTORISTAS];
+    int len = pack_journey_states(data, sizeof(data));
+    if (len <= 0) return;
+
+    struct os_mbuf *om = ble_hs_mbuf_from_flat(data, len);
+    if (om) {
+        int rc = ble_gatts_notify_custom(active_conn_handle,
+                                         gatt_journey_state_val_handle, om);
+        if (rc != 0) {
+            ESP_LOGW(TAG, "Notify journey failed: %d", rc);
+        } else {
+            ESP_LOGD(TAG, "Journey notify enviado: %d bytes", len);
+        }
+    }
+}
+
+void notify_ignition_state(void) {
+    if (!ignition_notify_enabled || active_conn_handle == 0) return;
+
+    uint8_t data[sizeof(IgnitionData)];
+    int len = pack_ignition_data(data, sizeof(data));
+    if (len <= 0) return;
+
+    struct os_mbuf *om = ble_hs_mbuf_from_flat(data, len);
+    if (om) {
+        int rc = ble_gatts_notify_custom(active_conn_handle,
+                                         gatt_ignition_val_handle, om);
+        if (rc != 0) {
+            ESP_LOGW(TAG, "Notify ignition failed: %d", rc);
+        } else {
+            ESP_LOGD(TAG, "Ignition notify enviado: %d bytes", len);
+        }
+    }
 }
 
 // ============================================================================

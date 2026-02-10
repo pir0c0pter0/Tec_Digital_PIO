@@ -72,6 +72,44 @@ int pack_journey_states(uint8_t* buf, size_t buf_len);
 int pack_ignition_data(uint8_t* buf, size_t buf_len);
 
 // ============================================================================
+// NOTIFICACOES BLE
+// ============================================================================
+
+/**
+ * Define o connection handle ativo para envio de notificacoes.
+ * Chamado em BLE_GAP_EVENT_CONNECT (set) e BLE_GAP_EVENT_DISCONNECT (clear=0).
+ *
+ * @param handle Connection handle (0 para limpar)
+ */
+void gatt_journey_set_conn_handle(uint16_t handle);
+
+/**
+ * Atualiza estado de subscricao de notificacoes por caracteristica.
+ * Chamado em BLE_GAP_EVENT_SUBSCRIBE quando cliente habilita/desabilita.
+ *
+ * @param attr_handle Handle do atributo que mudou subscricao
+ * @param notify true se cliente habilitou notificacoes
+ */
+void gatt_journey_update_subscription(uint16_t attr_handle, bool notify);
+
+/**
+ * Reseta todas as subscricoes (chamado em disconnect).
+ */
+void gatt_journey_reset_subscriptions(void);
+
+/**
+ * Envia notificacao com estado atual de jornada para cliente subscrito.
+ * Non-blocking: retorna silenciosamente se nao ha conexao ou subscricao.
+ */
+void notify_journey_state(void);
+
+/**
+ * Envia notificacao com estado atual de ignicao para cliente subscrito.
+ * Non-blocking: retorna silenciosamente se nao ha conexao ou subscricao.
+ */
+void notify_ignition_state(void);
+
+// ============================================================================
 // CALLBACKS DE ACESSO GATT
 // ============================================================================
 

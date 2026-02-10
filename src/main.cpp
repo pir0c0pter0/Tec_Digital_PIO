@@ -53,6 +53,7 @@
 // BLE
 #include "services/ble/ble_service.h"
 #include "services/ble/ble_event_queue.h"
+#include "services/ble/gatt/gatt_journey.h"
 
 // Nova arquitetura de telas
 #include "ui/screen_manager.h"
@@ -114,11 +115,17 @@ void onIgnicaoStatusChange(bool newStatus) {
     // Atualiza barra de status via StatusBar diretamente
     uint32_t tempoIgnicao = ignicaoLigada ? (time_millis() - ignicaoStartTime) : 0;
     statusBar.setIgnicao(newStatus, tempoIgnicao);
+
+    // Notifica cliente BLE sobre mudanca de ignicao
+    notify_ignition_state();
 }
 
 // Callback de jornada (requerido pelo jornada_manager)
 void onJornadaStateChange(void) {
     ESP_LOGD(TAG, "Estado de jornada alterado");
+
+    // Notifica cliente BLE sobre mudanca de jornada
+    notify_journey_state();
 }
 
 // ============================================================================
