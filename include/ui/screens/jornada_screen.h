@@ -65,6 +65,10 @@ private:
     // Metodos internos
     void createButtonGrid();
     void setupGridContainer();
+
+    // Persistencia NVS
+    void saveStateToNvs();
+    void restoreStateFromNvs();
 };
 
 #endif // UI_SCREENS_JORNADA_SCREEN_H

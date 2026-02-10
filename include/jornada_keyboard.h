@@ -10,6 +10,7 @@
 #include "button_manager.h"
 #include <string>
 #include <array>
+#include <functional>
 
 // Forward declaration
 class StatusBar;
@@ -55,9 +56,13 @@ struct BotaoJornada {
 // ============================================================================
 
 class JornadaKeyboard {
+public:
+    using StateChangeCallback = std::function<void()>;
+
 private:
     ButtonManager* btnManager;
     StatusBar* statusBar_;
+    StateChangeCallback stateChangeCb_;
 
     // Botões da jornada - cada um com seus próprios motoristas
     std::array<BotaoJornada, ACAO_MAX> botoes;
@@ -102,7 +107,10 @@ public:
 
     // Fechar popup de selecao de motorista (chamado pelo ScreenManager ao sair da tela)
     void closeMotoristaSelection();
-    
+
+    // Callback para notificar mudancas de estado (para persistencia NVS)
+    void setStateChangeCallback(StateChangeCallback cb);
+
     // Estado dos motoristas POR BOTÃO
     bool isMotoristaLogado(TipoAcao acao, int motorista);
     void logarMotorista(TipoAcao acao, int motorista);

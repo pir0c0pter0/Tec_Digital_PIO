@@ -47,6 +47,9 @@
 #include "ignicao_control.h"
 #include "lvgl_fs_driver.h"
 
+// Persistencia NVS
+#include "services/nvs/nvs_manager.h"
+
 // Nova arquitetura de telas
 #include "ui/screen_manager.h"
 #include "ui/widgets/status_bar.h"
@@ -128,8 +131,24 @@ static void system_task(void *arg) {
     vTaskDelay(pdMS_TO_TICKS(100));
     ESP_LOGI(TAG, "Completando inicializacao...");
 
+    // Inicializa NVS (deve ser antes de qualquer leitura de configuracao)
+    auto* nvsMgr = NvsManager::getInstance();
+    if (!nvsMgr->init()) {
+        ESP_LOGE(TAG, "Falha ao inicializar NVS! Usando valores padrao.");
+    }
+
     // Inicializa subsistema de audio
     initSimpleAudio();
+
+    // Restaura volume salvo no NVS
+    uint8_t savedVolume = nvsMgr->loadVolume(AUDIO_VOLUME_DEFAULT);
+    ESP_LOGI(TAG, "Volume restaurado: %d", savedVolume);
+    setAudioVolume(savedVolume);
+
+    // Restaura brilho salvo no NVS
+    uint8_t savedBrightness = nvsMgr->loadBrightness(100);
+    ESP_LOGI(TAG, "Brilho restaurado: %d%%", savedBrightness);
+    bsp_display_brightness_set(savedBrightness);
 
     // Controle de ignicao (antes da UI, para saber estado inicial)
     if (initIgnicaoControl(IGNICAO_DEBOUNCE_ON_S, IGNICAO_DEBOUNCE_OFF_S, true)) {

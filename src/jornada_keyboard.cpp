@@ -58,6 +58,7 @@ static void anim_shadow_opa_cb(void* var, int32_t v) {
 JornadaKeyboard::JornadaKeyboard() :
     btnManager(nullptr),
     statusBar_(nullptr),
+    stateChangeCb_(nullptr),
     popupMotorista(nullptr),
     acaoPendente(ACAO_JORNADA) {
     
@@ -85,6 +86,10 @@ JornadaKeyboard::~JornadaKeyboard() {
 
 void JornadaKeyboard::setStatusBar(StatusBar* bar) {
     statusBar_ = bar;
+}
+
+void JornadaKeyboard::setStateChangeCallback(StateChangeCallback cb) {
+    stateChangeCb_ = cb;
 }
 
 // ============================================================================
@@ -739,6 +744,11 @@ void JornadaKeyboard::processarAcao(int motorista, TipoAcao acao) {
     
     // Atualizar o estado visual (animação) deste botão
     atualizarIndicadores(acao);
+
+    // Notificar mudanca de estado para persistencia NVS
+    if (stateChangeCb_) {
+        stateChangeCb_();
+    }
 }
 
 // ============================================================================

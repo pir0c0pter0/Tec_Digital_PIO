@@ -5,6 +5,7 @@
  *
  * Encapsula o teclado de jornada como IScreen para integracao com
  * ScreenManagerImpl. Delega logica de dominio ao JornadaKeyboard.
+ * Integra com NvsManager para persistencia de estado entre reboots.
  *
  * Copyright (c) 2024-2026 Getscale Sistemas Embarcados
  * Desenvolvido por Mario Stanski Jr
@@ -15,10 +16,26 @@
 #include "ui/screens/jornada_screen.h"
 #include "jornada_keyboard.h"
 #include "button_manager.h"
+#include "services/nvs/nvs_manager.h"
 #include "esp_bsp.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 
 static const char* TAG = "JORNADA_SCR";
+
+// ============================================================================
+// STRUCT COMPACTA PARA PERSISTENCIA DO ESTADO DO TECLADO POR MOTORISTA
+// ============================================================================
+
+/**
+ * Cada motorista pode estar logado em multiplas acoes simultaneamente.
+ * Salvamos um bitmap de 16 bits (12 acoes usadas) por motorista.
+ * Total: 3 bytes por motorista, 9 bytes para 3 motoristas.
+ */
+struct __attribute__((packed)) NvsKbMotoristaState {
+    uint8_t version;          // NVS_JORNADA_VERSION para migracao
+    uint16_t acoesBitmap;     // Bit i = motorista logado na acao i
+};
 
 // ============================================================================
 // CONSTRUTOR E DESTRUTOR
@@ -74,6 +91,15 @@ void JornadaScreen::create() {
     // Obtem o screen LVGL diretamente do ButtonManager
     screen_ = btnManager_->getScreen();
 
+    // Registra callback para auto-save em NVS a cada mudanca de estado
+    JornadaKeyboard* kb = jornadaKb_;
+    jornadaKb_->setStateChangeCallback([kb, this]() {
+        saveStateToNvs();
+    });
+
+    // Restaura estado persistido do NVS (re-login motoristas nas acoes salvas)
+    restoreStateFromNvs();
+
     created_ = true;
     ESP_LOGI(TAG, "JornadaScreen criada com sucesso");
 }
@@ -84,6 +110,9 @@ void JornadaScreen::destroy() {
     }
 
     ESP_LOGI(TAG, "Destruindo JornadaScreen...");
+
+    // Salva estado antes de destruir (safety net)
+    saveStateToNvs();
 
     // Limpa e deleta JornadaKeyboard ANTES do ButtonManager
     // (JornadaKeyboard pode referenciar objetos do ButtonManager)
@@ -115,17 +144,13 @@ void JornadaScreen::update() {
 
 void JornadaScreen::onEnter() {
     ESP_LOGI(TAG, "JornadaScreen: onEnter");
-
-    // Se a tela ja existe mas os botoes foram limpos, recriar
-    if (jornadaKb_ && btnManager_) {
-        // Verifica se os botoes existem checando o primeiro botao
-        // Se nao existem, recria o teclado
-        // (Pode acontecer se destroy parcial ou recreacao)
-    }
 }
 
 void JornadaScreen::onExit() {
     ESP_LOGI(TAG, "JornadaScreen: onExit");
+
+    // Salva estado ao sair da tela (safety net em caso de perda de energia futura)
+    saveStateToNvs();
 
     // Fechar popup de selecao de motorista (se aberto)
     if (jornadaKb_) {
@@ -166,4 +191,60 @@ void JornadaScreen::createButtonGrid() {
 
 void JornadaScreen::setupGridContainer() {
     // Delegado ao ButtonManager::createScreen() via init()
+}
+
+// ============================================================================
+// PERSISTENCIA NVS
+// ============================================================================
+
+void JornadaScreen::saveStateToNvs() {
+    if (!jornadaKb_) return;
+
+    NvsManager* nvs = NvsManager::getInstance();
+
+    for (uint8_t mot = 0; mot < MAX_MOTORISTAS; mot++) {
+        NvsKbMotoristaState state;
+        state.version = NVS_JORNADA_VERSION;
+        state.acoesBitmap = 0;
+
+        // Monta bitmap: bit i = motorista logado na acao i
+        for (int acao = 0; acao < ACAO_MAX; acao++) {
+            if (jornadaKb_->isMotoristaLogado(static_cast<TipoAcao>(acao), mot)) {
+                state.acoesBitmap |= (1 << acao);
+            }
+        }
+
+        nvs->saveJornadaState(mot, &state, sizeof(state));
+    }
+
+    ESP_LOGD(TAG, "Estado do teclado salvo no NVS");
+}
+
+void JornadaScreen::restoreStateFromNvs() {
+    if (!jornadaKb_) return;
+
+    NvsManager* nvs = NvsManager::getInstance();
+    bool restoredAny = false;
+
+    for (uint8_t mot = 0; mot < MAX_MOTORISTAS; mot++) {
+        NvsKbMotoristaState state;
+        if (!nvs->loadJornadaState(mot, &state, sizeof(state))) {
+            continue;  // Nao encontrado ou versao incompativel
+        }
+
+        // Re-login motorista nas acoes salvas
+        for (int acao = 0; acao < ACAO_MAX; acao++) {
+            if (state.acoesBitmap & (1 << acao)) {
+                jornadaKb_->logarMotorista(static_cast<TipoAcao>(acao), mot);
+                ESP_LOGI(TAG, "Motorista %d restaurado na acao %d", mot + 1, acao);
+                restoredAny = true;
+            }
+        }
+    }
+
+    if (restoredAny) {
+        ESP_LOGI(TAG, "Estado do teclado restaurado do NVS");
+    } else {
+        ESP_LOGI(TAG, "Nenhum estado salvo encontrado no NVS");
+    }
 }
