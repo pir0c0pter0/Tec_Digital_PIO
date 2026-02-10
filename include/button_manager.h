@@ -167,6 +167,7 @@ private:
     // Debounce por instancia (isolamento entre telas)
     unsigned long lastButtonClickTime_;
     int lastButtonClickedId_;
+    unsigned long lastPopupClickTime_;
     
     // ==========================================
     // NOVO: Sistema de criação robusta

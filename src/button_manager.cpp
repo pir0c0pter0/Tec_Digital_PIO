@@ -51,6 +51,7 @@ ButtonManager::ButtonManager() :
     nextButtonId(1),
     lastButtonClickTime_(0),
     lastButtonClickedId_(-1),
+    lastPopupClickTime_(0),
     retryTimer(nullptr) {
     
     // Inicializar configuração de mensagem
@@ -1070,7 +1071,8 @@ void ButtonManager::buttonEventHandler(lv_event_t* e) {
     lv_obj_t* target = lv_event_get_target(e);
     ButtonManager* mgr = static_cast<ButtonManager*>(lv_obj_get_user_data(target));
     if (!mgr) {
-        mgr = getInstance(); // fallback para codigo legado
+        ESP_LOGE(TAG, "buttonEventHandler: null user_data on button ID=%d", buttonId);
+        return;
     }
 
     unsigned long currentTime = millis();
@@ -1099,18 +1101,19 @@ void ButtonManager::popupButtonHandler(lv_event_t* e) {
     lv_obj_t* target = lv_event_get_target(e);
     ButtonManager* mgr = static_cast<ButtonManager*>(lv_obj_get_user_data(target));
     if (!mgr) {
-        mgr = getInstance(); // fallback para codigo legado
+        ESP_LOGE(TAG, "popupButtonHandler: null user_data");
+        return;
     }
 
     unsigned long currentTime = millis();
-    static unsigned long lastPopupClickTime = 0;
 
-    if ((currentTime - lastPopupClickTime) < BUTTON_DEBOUNCE_MS) {
+    // Debounce por instancia (cada tela tem seu proprio estado de popup)
+    if ((currentTime - mgr->lastPopupClickTime_) < BUTTON_DEBOUNCE_MS) {
         esp_rom_printf("DEBOUNCE: Ignorando clique repetido no popup");
         return;
     }
 
-    lastPopupClickTime = currentTime;
+    mgr->lastPopupClickTime_ = currentTime;
 
     mgr->lastPopupResult = result;
 
