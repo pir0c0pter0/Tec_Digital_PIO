@@ -334,14 +334,18 @@ void StatusBar::swapBtnCallback(lv_event_t* e) {
         return;
     }
 
-    // Ciclar entre NUMPAD <-> JORNADA (sem usar pilha)
+    // Ciclo de 3 telas: NUMPAD -> JORNADA -> SETTINGS -> NUMPAD
     ScreenType current = self->screenManager_->getCurrentScreen();
 
     ScreenType next;
     if (current == ScreenType::NUMPAD) {
         next = ScreenType::JORNADA;
-    } else {
+    } else if (current == ScreenType::JORNADA) {
+        next = ScreenType::SETTINGS;
+    } else if (current == ScreenType::SETTINGS) {
         next = ScreenType::NUMPAD;
+    } else {
+        next = ScreenType::NUMPAD;  // fallback
     }
 
     ESP_LOGI(TAG, "Swap btn: trocando de %d para %d",

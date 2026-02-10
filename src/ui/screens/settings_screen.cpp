@@ -14,6 +14,7 @@
 
 #include "ui/screens/settings_screen.h"
 #include "services/nvs/nvs_manager.h"
+#include "services/ble/gatt/gatt_config.h"
 #include "simple_audio_manager.h"
 #include "display.h"
 #include "esp_bsp.h"
@@ -366,6 +367,9 @@ void SettingsScreen::onVolumeChanged(lv_event_t* e) {
     // Persiste no NVS
     NvsManager::getInstance()->saveVolume((uint8_t)value);
 
+    // Notifica cliente BLE (safe mesmo sem conexao)
+    notify_config_volume();
+
     // Atualiza label
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", (int)value);
@@ -385,6 +389,9 @@ void SettingsScreen::onBrightnessChanged(lv_event_t* e) {
 
     // Persiste no NVS
     NvsManager::getInstance()->saveBrightness((uint8_t)value);
+
+    // Notifica cliente BLE (safe mesmo sem conexao)
+    notify_config_brightness();
 
     // Atualiza label
     char buf[8];
