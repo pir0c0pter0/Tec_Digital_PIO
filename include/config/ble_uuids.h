@@ -7,7 +7,7 @@
  *
  * Formato base: 0000XXXX-4A47-0000-4763-7365-0000000Y
  *   XXXX = ID curto do servico/caracteristica
- *   Y    = grupo do servico (1=Journey, 3=Diagnostics)
+ *   Y    = grupo do servico (1=Journey, 2=Config, 3=Diagnostics)
  *
  * IMPORTANTE: BLE_UUID128_INIT recebe bytes em LITTLE-ENDIAN (invertido).
  *
@@ -47,6 +47,51 @@ static const ble_uuid128_t BLE_UUID_JOURNEY_STATE_CHR =
 static const ble_uuid128_t BLE_UUID_IGNITION_STATUS_CHR =
     BLE_UUID128_INIT(0x01, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
                      0x00, 0x00, 0x4A, 0x47, 0x02, 0x01, 0x00, 0x00);
+
+// ============================================================================
+// SERVICO DE CONFIGURACAO (grupo 2)
+// UUID base: 0000XXXX-4A47-0000-4763-7365-00000002
+// ============================================================================
+
+/**
+ * Configuration Service UUID: 00000200-4A47-0000-4763-7365-00000002
+ * Little-endian: 02 00 00 00 | 65 73 63 47 | 00 00 47 4A | 00 02 00 00
+ */
+static const ble_uuid128_t BLE_UUID_CONFIG_SVC =
+    BLE_UUID128_INIT(0x02, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x00, 0x02, 0x00, 0x00);
+
+/**
+ * Volume Characteristic UUID: 00000201-4A47-0000-4763-7365-00000002
+ * Little-endian: 02 00 00 00 | 65 73 63 47 | 00 00 47 4A | 01 02 00 00
+ */
+static const ble_uuid128_t BLE_UUID_CONFIG_VOLUME_CHR =
+    BLE_UUID128_INIT(0x02, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x01, 0x02, 0x00, 0x00);
+
+/**
+ * Brightness Characteristic UUID: 00000202-4A47-0000-4763-7365-00000002
+ * Little-endian: 02 00 00 00 | 65 73 63 47 | 00 00 47 4A | 02 02 00 00
+ */
+static const ble_uuid128_t BLE_UUID_CONFIG_BRIGHTNESS_CHR =
+    BLE_UUID128_INIT(0x02, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x02, 0x02, 0x00, 0x00);
+
+/**
+ * Driver Name Characteristic UUID: 00000203-4A47-0000-4763-7365-00000002
+ * Little-endian: 02 00 00 00 | 65 73 63 47 | 00 00 47 4A | 03 02 00 00
+ */
+static const ble_uuid128_t BLE_UUID_CONFIG_DRIVER_NAME_CHR =
+    BLE_UUID128_INIT(0x02, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x03, 0x02, 0x00, 0x00);
+
+/**
+ * Time Sync Characteristic UUID: 00000204-4A47-0000-4763-7365-00000002
+ * Little-endian: 02 00 00 00 | 65 73 63 47 | 00 00 47 4A | 04 02 00 00
+ */
+static const ble_uuid128_t BLE_UUID_CONFIG_TIME_SYNC_CHR =
+    BLE_UUID128_INIT(0x02, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x04, 0x02, 0x00, 0x00);
 
 // ============================================================================
 // SERVICO DE DIAGNOSTICOS (grupo 3)
