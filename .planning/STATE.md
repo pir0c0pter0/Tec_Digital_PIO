@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 4 of 5 (OTA)
-Plan: 1 of 3 in current phase
-Status: Executing Phase 04 -- Plan 01 complete
-Last activity: 2026-02-10 -- 04-01-PLAN.md complete (OTA foundation: types, GATT prov service, BLE shutdown)
+Plan: 2 of 3 in current phase
+Status: Executing Phase 04 -- Plan 02 complete
+Last activity: 2026-02-10 -- 04-02-PLAN.md complete (OTA service core: Wi-Fi, HTTP server, state machine, OtaScreen)
 
-Progress: [███████████████░░░░░] 75%
+Progress: [████████████████░░░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 5 min
-- Total execution time: 1.39 hours
+- Total execution time: 1.47 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [███████████████░░░░░] 75%
 | 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
 | 02-ble-core | 4 | 27 min | 7 min |
 | 03-settings | 3 | 19 min | 6 min |
-| 04-ota | 1 | 4 min | 4 min |
+| 04-ota | 2 | 9 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-04 (4min), 03-01 (7min), 03-02 (8min), 03-03 (4min), 04-01 (4min)
-- Trend: Foundation/type-definition plans consistently fast (~4min)
+- Last 5 plans: 03-01 (7min), 03-02 (8min), 03-03 (4min), 04-01 (4min), 04-02 (5min)
+- Trend: OTA plans maintaining fast pace (~5min avg)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -54,6 +54,7 @@ Progress: [███████████████░░░░░] 75%
 | 03 | P02 | 8min | 2 tasks | 5 files |
 | 03 | P03 | 4min | 3 tasks | 4 files |
 | 04 | P01 | 4min | 2 tasks | 9 files |
+| 04 | P02 | 5min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,12 @@ Recent decisions affecting current work:
 - [Phase 04-01]: OTA status as 2 bytes [state, error_code] -- compact for BLE notify
 - [Phase 04-01]: IP address as 4 raw bytes (network byte order) -- app parses directly
 - [Phase 04-01]: OTA prov event queue handler uses C pointer callback for extern "C" compatibility
+- [Phase 04-02]: Non-blocking Wi-Fi polling via xEventGroupGetBits (0 timeout) -- avoids stalling LVGL in system_task
+- [Phase 04-02]: Heap-allocated 4KB receive buffer (malloc) instead of stack to avoid HTTP task stack overflow
+- [Phase 04-02]: SHA-256 computed incrementally per chunk via mbedtls_sha256_update during transfer
+- [Phase 04-02]: OTA progress queue uses xQueueOverwrite (size 1) -- latest-event-wins without backpressure
+- [Phase 04-02]: OtaScreen follows SettingsScreen pattern (direct LVGL widgets, no ButtonManager, no interactive elements)
+- [Phase 04-02]: Lambda callbacks in OtaService process handlers capture singleton pointer for state transitions
 
 ### Pending Todos
 
@@ -130,5 +137,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 04-01-PLAN.md (OTA foundation: types, GATT prov service, BLE shutdown). Plan 1 of 3 in Phase 04.
-Resume file: .planning/phases/04-ota/04-02-PLAN.md
+Stopped at: Completed 04-02-PLAN.md (OTA service core: Wi-Fi STA, HTTP server, state machine, OtaScreen). Plan 2 of 3 in Phase 04.
+Resume file: .planning/phases/04-ota/04-03-PLAN.md
