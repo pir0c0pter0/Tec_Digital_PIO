@@ -18,6 +18,7 @@
 #include "services/ble/gatt/gatt_journey.h"
 #include "services/ble/gatt/gatt_diagnostics.h"
 #include "services/ble/gatt/gatt_config.h"
+#include "services/ble/gatt/gatt_ota_prov.h"
 #include "config/ble_uuids.h"
 #include "config/app_config.h"
 
@@ -49,6 +50,8 @@ uint16_t gatt_journey_state_val_handle = 0;
 uint16_t gatt_ignition_val_handle = 0;
 uint16_t gatt_config_volume_val_handle = 0;
 uint16_t gatt_config_brightness_val_handle = 0;
+uint16_t gatt_ota_prov_status_val_handle = 0;
+uint16_t gatt_ota_prov_ip_val_handle = 0;
 
 // ============================================================================
 // TABELA DE SERVICOS GATT
@@ -156,6 +159,46 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         },
     },
     // ========================================================================
+    // OTA Provisioning Service (custom UUID, grupo 4)
+    // ========================================================================
+    {
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = &BLE_UUID_OTA_PROV_SVC.u,
+        .characteristics = (struct ble_gatt_chr_def[]) {
+            // Wi-Fi Credentials: escrita apenas
+            {
+                .uuid = &BLE_UUID_OTA_PROV_WIFI_CREDS_CHR.u,
+                .access_cb = ota_prov_wifi_creds_access,
+                .arg = NULL,
+                .descriptors = NULL,
+                .flags = BLE_GATT_CHR_F_WRITE,
+                .min_key_size = 0,
+                .val_handle = NULL,
+            },
+            // OTA Status: leitura + notificacao
+            {
+                .uuid = &BLE_UUID_OTA_PROV_STATUS_CHR.u,
+                .access_cb = ota_prov_status_access,
+                .arg = NULL,
+                .descriptors = NULL,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                .min_key_size = 0,
+                .val_handle = &gatt_ota_prov_status_val_handle,
+            },
+            // IP Address: leitura + notificacao
+            {
+                .uuid = &BLE_UUID_OTA_PROV_IP_ADDR_CHR.u,
+                .access_cb = ota_prov_ip_addr_access,
+                .arg = NULL,
+                .descriptors = NULL,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                .min_key_size = 0,
+                .val_handle = &gatt_ota_prov_ip_val_handle,
+            },
+            { 0 }, // Terminador de caracteristicas
+        },
+    },
+    // ========================================================================
     // Terminador de servicos
     // ========================================================================
     { 0 },
@@ -197,6 +240,6 @@ int gatt_svr_init(void) {
         return rc;
     }
 
-    ESP_LOGI(TAG, "GATT server inicializado: DIS + Journey (2 chr) + Diagnostics (1 chr) + Config (4 chr)");
+    ESP_LOGI(TAG, "GATT server inicializado: DIS + Journey (2 chr) + Diagnostics (1 chr) + Config (4 chr) + OTA Prov (3 chr)");
     return 0;
 }

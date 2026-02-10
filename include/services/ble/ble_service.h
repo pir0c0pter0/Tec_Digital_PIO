@@ -43,6 +43,13 @@ public:
     uint16_t getCurrentMtu() const override;
     void setStatusCallback(BleStatusCallback callback) override;
 
+    /**
+     * Desliga completamente o stack NimBLE, liberando ~50KB de SRAM interna.
+     * IRREVERSIVEL -- dispositivo reinicia apos OTA.
+     * DEVE ser chamado de system_task, NUNCA do NimBLE host task.
+     */
+    void shutdown();
+
 private:
     BleService();
     ~BleService() = default;

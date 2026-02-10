@@ -16,6 +16,7 @@
 #include "services/ble/gatt/gatt_server.h"
 #include "services/ble/gatt/gatt_journey.h"
 #include "services/ble/gatt/gatt_config.h"
+#include "services/ble/gatt/gatt_ota_prov.h"
 #include "config/app_config.h"
 #include "config/ble_uuids.h"
 #include "utils/debug_utils.h"
@@ -34,6 +35,7 @@
 #include "esp_mac.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 
 // ============================================================================
 // TAG DE LOG
@@ -313,6 +315,7 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
             ble_post_event(BleStatus::CONNECTED, event->connect.conn_handle);
             gatt_journey_set_conn_handle(event->connect.conn_handle);
             gatt_config_set_conn_handle(event->connect.conn_handle);
+            ota_prov_set_conn_handle(event->connect.conn_handle);
 
             // Seguranca sera iniciada pelo central (celular) quando necessario
             // Nao chamamos ble_gap_security_initiate() para evitar conflito com nRF Connect
@@ -333,6 +336,8 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         gatt_journey_reset_subscriptions();
         gatt_config_set_conn_handle(0);
         gatt_config_reset_subscriptions();
+        ota_prov_set_conn_handle(0);
+        ota_prov_reset_subscriptions();
 
         // Reinicia advertising
         self->startAdvertisingInternal();
@@ -386,6 +391,10 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         // Roteia subscricoes de config (cada modulo ignora handles que nao sao seus)
         gatt_config_update_subscription(event->subscribe.attr_handle,
                                         event->subscribe.cur_notify);
+
+        // Roteia subscricoes de OTA provisioning
+        gatt_ota_prov_update_subscription(event->subscribe.attr_handle,
+                                           event->subscribe.cur_notify);
         break;
     }
 
@@ -459,4 +468,44 @@ void BleService::updateStatus(BleStatus newStatus) {
     if (statusCallback_ != nullptr) {
         statusCallback_(newStatus);
     }
+}
+
+// ============================================================================
+// SHUTDOWN (para OTA -- libera ~50KB SRAM interna)
+// ============================================================================
+
+void BleService::shutdown() {
+    if (!initialized_) {
+        ESP_LOGW(TAG, "BLE nao inicializado, nada a desligar");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Desligando BLE completamente (liberando SRAM)...");
+    ESP_LOGI(TAG, "Heap livre interno ANTES: %lu bytes",
+             (unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+
+    // 1. Para advertising
+    ble_gap_adv_stop();
+
+    // 2. Desconecta cliente se conectado
+    if (connHandle_ != 0) {
+        ble_gap_terminate(connHandle_, BLE_ERR_REM_USER_CONN_TERM);
+        vTaskDelay(pdMS_TO_TICKS(OTA_BLE_DISCONNECT_DELAY_MS));
+    }
+
+    // 3. Para NimBLE host (bloqueia ate host task sair)
+    // CRITICO: deve ser chamado de task diferente do NimBLE host task
+    int ret = nimble_port_stop();
+    if (ret == 0) {
+        // 4. Deinicializa NimBLE port (inclui controller em ESP-IDF 5.3.1)
+        nimble_port_deinit();
+    } else {
+        ESP_LOGE(TAG, "nimble_port_stop falhou: %d", ret);
+    }
+
+    initialized_ = false;
+    updateStatus(BleStatus::DISCONNECTED);
+
+    ESP_LOGI(TAG, "BLE desligado. Heap livre interno APOS: %lu bytes",
+             (unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 }
