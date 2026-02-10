@@ -50,6 +50,9 @@
 // Persistencia NVS
 #include "services/nvs/nvs_manager.h"
 
+// BLE
+#include "services/ble/ble_service.h"
+
 // Nova arquitetura de telas
 #include "ui/screen_manager.h"
 #include "ui/widgets/status_bar.h"
@@ -193,11 +196,20 @@ static void system_task(void *arg) {
 
     systemInitialized = true;
 
+    // Inicializa BLE (apos NVS e UI para nao bloquear boot)
+    auto* bleSvc = BleService::getInstance();
+    if (!bleSvc->init()) {
+        ESP_LOGE(TAG, "Falha ao inicializar BLE!");
+    } else {
+        ESP_LOGI(TAG, "BLE inicializado - advertising...");
+    }
+
     ESP_LOGI(TAG, "=================================");
     ESP_LOGI(TAG, "Sistema Pronto! (v2 Screen Manager)");
     ESP_LOGI(TAG, "- Tela inicial: Numpad");
     ESP_LOGI(TAG, "- Menu: Navega para Jornada");
     ESP_LOGI(TAG, "- Voltar: Retorna tela anterior");
+    ESP_LOGI(TAG, "- BLE: Advertising ativo");
     ESP_LOGI(TAG, "=================================");
 
     // Loop principal
