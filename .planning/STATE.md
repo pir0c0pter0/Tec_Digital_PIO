@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Rastrear estados de jornada de motoristas em tempo real com interface responsiva, comunicacao segura via BLE, e dados que nunca se perdem.
-**Current focus:** Phase 2 - BLE Core (Phase 1 + 1.1 complete)
+**Current focus:** Phase 3 - Settings + Config Sync (Phase 1 + 1.1 + 2 complete)
 
 ## Current Position
 
-Phase: 2 of 5 (BLE Core) -- COMPLETE
-Plan: 4 of 4 in current phase (02-04 BLE integration wiring complete)
-Status: Phase 02 Complete -- Ready for Phase 03
-Last activity: 2026-02-10 -- 02-04-PLAN.md complete (BLE integration wiring + notifications + validation scaffold)
+Phase: 3 of 5 (Settings + Config Sync)
+Plan: 1 of 3 in current phase (03-01 SettingsScreen + NVS driver names complete)
+Status: Executing Phase 03
+Last activity: 2026-02-10 -- 03-01-PLAN.md complete (SettingsScreen UI + NVS driver name persistence)
 
-Progress: [██████████░░░░░░░░░░] 55%
+Progress: [████████████░░░░░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 4 min
-- Total execution time: 1.00 hours
+- Total plans completed: 13
+- Average duration: 5 min
+- Total execution time: 1.12 hours
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [██████████░░░░░░░░░░] 55%
 | 01-foundation | 4 | 15 min | 4 min |
 | 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
 | 02-ble-core | 4 | 27 min | 7 min |
+| 03-settings | 1 | 7 min | 7 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-04 (5min), 02-01 (8min), 02-02 (7min), 02-03 (8min), 02-04 (4min)
-- Trend: 02-04 faster (4min) -- integration wiring with no new infrastructure
+- Last 5 plans: 02-01 (8min), 02-02 (7min), 02-03 (8min), 02-04 (4min), 03-01 (7min)
+- Trend: Consistent 7min for UI+NVS work with pre-existing build fix
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -48,6 +49,7 @@ Progress: [██████████░░░░░░░░░░] 55%
 | 02 | P02 | 7min | 2 tasks | 7 files |
 | 02 | P03 | 8min | 2 tasks | 4 files |
 | 02 | P04 | 4min | 2 tasks | 5 files |
+| 03 | P01 | 7min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -90,6 +92,10 @@ Recent decisions affecting current work:
 - [Phase 02-04]: Per-characteristic subscription tracking via gatt_journey_update_subscription(attr_handle) -- prevents subscriptions from resetting each other
 - [Phase 02-04]: Direct ble_gatts_notify_custom() calls from domain callbacks (Core 0) -- NimBLE queues internally
 - [Phase 02-04]: gatt_validation.h header-only with NimBLE includes for self-contained Phase 3 usage
+- [Phase 03-01]: Direct LVGL widgets on screen_ (no ButtonManager) for SettingsScreen -- sliders not button grid
+- [Phase 03-01]: display.h include for bsp_display_brightness_set (not esp_bsp.h) -- function declared in display.h
+- [Phase 03-01]: nvs_set_str for driver names (not blob) -- handles null-termination correctly
+- [Phase 03-01]: 1000ms info refresh throttle -- system info labels dont need 5ms update rate
 
 ### Pending Todos
 
@@ -108,5 +114,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 02-04-PLAN.md (BLE integration wiring). Phase 02 (BLE Core) fully complete. Ready for Phase 03 (Settings + Config Sync).
-Resume file: .planning/phases/03-settings/03-01-PLAN.md
+Stopped at: Completed 03-01-PLAN.md (SettingsScreen + NVS driver names). Phase 03 in progress (1 of 3 plans done).
+Resume file: .planning/phases/03-settings/03-02-PLAN.md
