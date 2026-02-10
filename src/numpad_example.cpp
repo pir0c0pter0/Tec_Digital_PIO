@@ -29,11 +29,6 @@ extern "C" void playAudioFile(const char* filename);
 #define NUMPAD_TIMEOUT_MS 10000  // 10 segundos
 
 // ============================================================================
-// VARIÁVEIS ESTÁTICAS
-// ============================================================================
-NumpadExample* NumpadExample::instance = nullptr;
-
-// ============================================================================
 // CONSTRUTOR E DESTRUTOR
 // ============================================================================
 
@@ -56,29 +51,8 @@ NumpadExample::~NumpadExample() {
 }
 
 // ============================================================================
-// SINGLETON
-// ============================================================================
-
-NumpadExample* NumpadExample::getInstance() {
-    if (instance == nullptr) {
-        instance = new NumpadExample();
-    }
-    return instance;
-}
-
-// ============================================================================
 // INICIALIZAÇÃO
 // ============================================================================
-
-void NumpadExample::init() {
-    btnManager = ButtonManager::getInstance();
-    if (!btnManager) {
-        esp_rom_printf("ERRO: ButtonManager não inicializado!");
-        return;
-    }
-
-    esp_rom_printf("NumpadExample inicializado com sistema robusto");
-}
 
 void NumpadExample::init(ButtonManager* mgr) {
     btnManager = mgr;
@@ -544,152 +518,6 @@ void NumpadExample::updateDisplay() {
                                &lv_font_montserrat_24);
     }
 }
-
-// ============================================================================
-// CALLBACKS (DEPRECATED: substituidos por lambdas em createNumpad())
-// Mantidos para compatibilidade com codigo legado (ScreenManager antigo)
-// ============================================================================
-
-// DEPRECATED: substituido por lambda digitCallback em createNumpad()
-void NumpadExample::onDigitClick(int buttonId) {
-    ESP_LOGW(TAG, "onDigitClick: chamada via funcao estatica (deprecated)");
-    NumpadExample* numpad = getInstance();
-    if (!numpad) return;
-
-    for (int i = 0; i <= 9; i++) {
-        if (numpad->btnIds[i] == buttonId) {
-            numpad->addDigit(i);
-            break;
-        }
-    }
-}
-
-// DEPRECATED: substituido por lambda okCallback em createNumpad()
-void NumpadExample::onOkClick(int buttonId) {
-    ESP_LOGW(TAG, "onOkClick: chamada via funcao estatica (deprecated)");
-    NumpadExample* numpad = getInstance();
-    if (!numpad || !numpad->btnManager) return;
-
-    std::string number = numpad->getNumber();
-
-    if (number.empty()) {
-        playAudioFile("/nok_click.mp3");
-        if (numpad->statusBar_) {
-            numpad->statusBar_->setMessage("Nenhum numero digitado!",
-                                           lv_color_hex(0xFFFF00),
-                                           &lv_font_montserrat_16,
-                                           2500);
-        }
-        numpad->btnManager->showPopup("Aviso",
-                                      "Nenhum numero digitado!",
-                                      POPUP_WARNING, false, nullptr);
-        return;
-    }
-
-    bool isOnlyZeros = true;
-    for (char c : number) {
-        if (c != '0') {
-            isOnlyZeros = false;
-            break;
-        }
-    }
-
-    if (isOnlyZeros) {
-        playAudioFile("/nok_click.mp3");
-        if (numpad->statusBar_) {
-            numpad->statusBar_->setMessage("Numero nao pode ser zero!",
-                                           lv_color_hex(0xFF0000),
-                                           &lv_font_montserrat_16,
-                                           3000);
-        }
-        numpad->btnManager->showPopup("Erro",
-                                      "Numero nao pode ser zero!",
-                                      POPUP_ERROR, false, nullptr);
-        esp_rom_printf("ERRO: Numero zero nao permitido");
-        return;
-    }
-
-    playAudioFile("/ok_click.mp3");
-
-    if (numpad->statusBar_) {
-        char successMsg[100];
-        snprintf(successMsg, sizeof(successMsg), "Codigo %s enviado!", number.c_str());
-        numpad->statusBar_->setMessage(successMsg,
-                                       lv_color_hex(0x00FF00),
-                                       &lv_font_montserrat_18,
-                                       3000);
-    }
-
-    char message[100];
-    snprintf(message, sizeof(message),
-             "Codigo enviado:\n\n%s", number.c_str());
-
-    numpad->btnManager->showPopup("Sucesso",
-                                  message,
-                                  POPUP_SUCCESS, false, nullptr);
-
-    numpad->clearNumber();
-    esp_rom_printf("Numero enviado com sucesso: %s\n", number.c_str());
-}
-
-// DEPRECATED: substituido por lambda cancelCallback em createNumpad()
-void NumpadExample::onCancelClick(int buttonId) {
-    ESP_LOGW(TAG, "onCancelClick: chamada via funcao estatica (deprecated)");
-    NumpadExample* numpad = getInstance();
-    if (!numpad || !numpad->btnManager) return;
-
-    playAudioFile("/nok_click.mp3");
-    numpad->clearNumber();
-
-    if (numpad->statusBar_) {
-        numpad->statusBar_->setMessage("Operacao cancelada",
-                                       lv_color_hex(0x666666),
-                                       &lv_font_montserrat_16,
-                                       2000);
-    }
-
-    esp_rom_printf("Cancelar pressionado - numeros limpos");
-}
-
-// ============================================================================
-// FUNÇÕES HELPER GLOBAIS (DEPRECATED: usar ScreenManagerImpl para navegacao)
-// ============================================================================
-
-// DEPRECATED: usar ScreenManagerImpl para mostrar tela numpad
-void showNumpad() {
-    esp_rom_printf("Mostrando teclado numerico");
-    
-    ButtonManager* mgr = ButtonManager::getInstance();
-    if (mgr) {
-        // Limpa todos os botões existentes
-        mgr->removeAllButtons();
-    }
-    
-    NumpadExample* numpad = NumpadExample::getInstance();
-    numpad->init();
-    numpad->createNumpad();
-}
-
-// DEPRECATED: sera removido na proxima tarefa de limpeza
-void hideNumpad() {
-    esp_rom_printf("Escondendo teclado numerico");
-
-    NumpadExample* numpad = NumpadExample::getInstance();
-    numpad->clearNumpad();
-}
-
-// ============================================================================
-// WRAPPERS EXTERN C PARA CHAMADAS DE main.cpp
-// ============================================================================
-
-extern "C" {
-
-void numpadInit(void) {
-    NumpadExample* numpad = NumpadExample::getInstance();
-    numpad->init();
-}
-
-} // extern "C"
 
 // ============================================================================
 // FIM DA IMPLEMENTAÇÃO

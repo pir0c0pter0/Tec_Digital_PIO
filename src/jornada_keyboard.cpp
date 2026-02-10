@@ -5,7 +5,6 @@
  */
 
 #include "jornada_keyboard.h"
-#include "numpad_example.h"
 #include "ui/widgets/status_bar.h"
 #include "esp_bsp.h"
 #include "esp_log.h"
@@ -18,13 +17,9 @@ static const char *TAG = "JORNADA_KB";
 // Macro para substituir millis()
 #define millis() ((uint32_t)(esp_timer_get_time() / 1000ULL))
 
-// Definições de tela (mesmas do button_manager.h)
-#define SCREEN_WIDTH 480
-#define SCREEN_HEIGHT 320
-#define STATUS_BAR_HEIGHT 40
-#define GRID_AREA_HEIGHT (SCREEN_HEIGHT - STATUS_BAR_HEIGHT)
+// Definicoes de tela ja incluidas via button_manager.h / app_config.h
 
-#define ENABLE_PULSING_ANIMATION 0  // DESABILITADO ATÉ RESOLVER O PROBLEMA
+#define ENABLE_PULSING_ANIMATION 0  // DESABILITADO ATE RESOLVER O PROBLEMA
 
 // Declaração externa para tocar áudio
 extern "C" void playAudioFile(const char* filename);
@@ -54,8 +49,7 @@ static void anim_shadow_opa_cb(void* var, int32_t v) {
 // VARIÁVEIS ESTÁTICAS
 // ============================================================================
 
-JornadaKeyboard* JornadaKeyboard::instance = nullptr;
-ScreenManager* ScreenManager::instance = nullptr;
+// (static instance e ScreenManager removidos -- agora usa instancias per-screen)
 
 // ============================================================================
 // JORNADA KEYBOARD - CONSTRUTOR E DESTRUTOR
@@ -89,18 +83,6 @@ JornadaKeyboard::~JornadaKeyboard() {
     clearKeyboard();
 }
 
-// ============================================================================
-// SINGLETON
-// ============================================================================
-
-// DEPRECATED: usar instancias per-screen via new JornadaKeyboard()
-JornadaKeyboard* JornadaKeyboard::getInstance() {
-    if (instance == nullptr) {
-        instance = new JornadaKeyboard();
-    }
-    return instance;
-}
-
 void JornadaKeyboard::setStatusBar(StatusBar* bar) {
     statusBar_ = bar;
 }
@@ -108,16 +90,6 @@ void JornadaKeyboard::setStatusBar(StatusBar* bar) {
 // ============================================================================
 // INICIALIZAÇÃO
 // ============================================================================
-
-void JornadaKeyboard::init() {
-    btnManager = ButtonManager::getInstance();
-    if (!btnManager) {
-        esp_rom_printf("ERRO: ButtonManager não inicializado!");
-        return;
-    }
-
-    esp_rom_printf("JornadaKeyboard inicializado");
-}
 
 void JornadaKeyboard::init(ButtonManager* mgr) {
     btnManager = mgr;
@@ -813,21 +785,6 @@ EstadoMotorista JornadaKeyboard::getEstadoMotorista(TipoAcao acao, int motorista
 // CALLBACKS
 // ============================================================================
 
-// DEPRECATED: substituido por lambda em createKeyboard(). Mantido para compatibilidade.
-void JornadaKeyboard::onActionButtonClick(int buttonId) {
-    ESP_LOGW(TAG, "onActionButtonClick: chamada via funcao estatica (deprecated)");
-    JornadaKeyboard* jornada = getInstance();
-    if (!jornada) return;
-
-    for (int i = 0; i < ACAO_MAX; i++) {
-        if (jornada->botoes[i].buttonId == buttonId) {
-            playAudioFile("/click.mp3");
-            jornada->showMotoristaSelection(jornada->botoes[i].tipo);
-            break;
-        }
-    }
-}
-
 void JornadaKeyboard::onMotoristaSelectClick(lv_event_t* e) {
     int motorista = (int)(intptr_t)lv_event_get_user_data(e);
 
@@ -854,248 +811,6 @@ void JornadaKeyboard::onCancelPopupClick(lv_event_t* e) {
 
     playAudioFile("/nok_click.mp3");
     jornada->closeMotoristaSelection();
-}
-
-// ... O restante do arquivo (ScreenManager e funções globais) permanece inalterado ...
-// ============================================================================
-// SCREEN MANAGER - IMPLEMENTAÇÃO
-// ============================================================================
-
-ScreenManager::ScreenManager() : 
-    telaAtual(TELA_NUMPAD),
-    container(nullptr),
-    numpadInstance(nullptr),
-    jornadaInstance(nullptr),
-    btnScreenSwitch(nullptr) {
-}
-
-ScreenManager::~ScreenManager() {
-    // Limpar telas
-    if (numpadInstance) {
-        NumpadExample* numpad = static_cast<NumpadExample*>(numpadInstance);
-        numpad->clearNumpad();
-    }
-    
-    if (jornadaInstance) {
-        jornadaInstance->clearKeyboard();
-    }
-}
-
-ScreenManager* ScreenManager::getInstance() {
-    if (instance == nullptr) {
-        instance = new ScreenManager();
-    }
-    return instance;
-}
-
-void ScreenManager::init() {
-    esp_rom_printf("Inicializando ScreenManager...");
-    
-    // Inicializar instâncias PRIMEIRO
-    numpadInstance = NumpadExample::getInstance();
-    NumpadExample* numpad = static_cast<NumpadExample*>(numpadInstance);
-    numpad->init();
-    
-    jornadaInstance = JornadaKeyboard::getInstance();
-    jornadaInstance->init();
-    
-    // Mostrar tela inicial (numpad)
-    showNumpadScreen();
-    
-    // Criar botão com delay maior para garantir que tudo esteja pronto
-    lv_timer_t* timer = lv_timer_create([](lv_timer_t* t) {
-        ScreenManager* sm = ScreenManager::getInstance();
-        if (sm) {
-            sm->createScreenSwitchButton();
-            esp_rom_printf("Botao de troca criado apos inicializacao");
-        }
-        lv_timer_del(t);
-    }, 500, nullptr);
-    
-    esp_rom_printf("ScreenManager inicializado!");
-}
-
-// Criar botão de troca de tela
-void ScreenManager::createScreenSwitchButton() {
-    // Sempre deletar o anterior se existir
-    if (btnScreenSwitch) {
-        lv_obj_del(btnScreenSwitch);
-        btnScreenSwitch = nullptr;
-    }
-    
-    // Criar novo botão
-    lv_obj_t* screen = lv_scr_act();
-    if (!screen) {
-        esp_rom_printf("ERRO: Tela nao encontrada!");
-        return;
-    }
-    
-    // Botão de troca de tela no EXTREMO canto inferior direito
-    btnScreenSwitch = lv_btn_create(screen);
-    lv_obj_set_size(btnScreenSwitch, 60, 35);
-    // Posição absoluta no canto direito da barra de status
-    lv_obj_set_pos(btnScreenSwitch, SCREEN_WIDTH - 65, SCREEN_HEIGHT - 38);
-    lv_obj_set_style_bg_color(btnScreenSwitch, lv_color_hex(0x0088FF), LV_PART_MAIN);
-    lv_obj_set_style_radius(btnScreenSwitch, 5, LV_PART_MAIN);
-    lv_obj_set_style_border_width(btnScreenSwitch, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_color(btnScreenSwitch, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-    
-    // Texto simples mostrando o número da tela
-    lv_obj_t* label = lv_label_create(btnScreenSwitch);
-    char text[16];
-    snprintf(text, sizeof(text), "[%d]", telaAtual + 1);
-    lv_label_set_text(label, text);
-    lv_obj_center(label);
-    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_20, LV_PART_MAIN);
-    
-    // Adicionar callback
-    lv_obj_add_event_cb(btnScreenSwitch, onScreenSwitchClick, LV_EVENT_CLICKED, nullptr);
-    
-    // Trazer para frente
-    lv_obj_move_foreground(btnScreenSwitch);
-    
-    esp_rom_printf("Botao criado! Posicao: %d,%d Tela: %d\n", 
-                  SCREEN_WIDTH - 65, SCREEN_HEIGHT - 38, telaAtual + 1);
-}
-
-// Callback para botão de troca de tela
-void ScreenManager::onScreenSwitchClick(lv_event_t* e) {
-    ScreenManager* mgr = getInstance();
-    if (!mgr) return;
-    
-    playAudioFile("/click.mp3");
-    
-    // Alternar entre as telas
-    if (mgr->telaAtual == TELA_NUMPAD) {
-        mgr->showJornadaScreen();
-    } else {
-        mgr->showNumpadScreen();
-    }
-    
-    esp_rom_printf("Tela trocada para: %d\n", mgr->telaAtual);
-}
-
-void ScreenManager::showNumpadScreen() {
-    esp_rom_printf("Mostrando tela de teclado numerico");
-    
-    // Limpar tela de jornada se existir
-    if (jornadaInstance) {
-        jornadaInstance->clearKeyboard();
-    }
-    
-    // Limpar todos os botões primeiro
-    ButtonManager* mgr = ButtonManager::getInstance();
-    if (mgr) {
-        mgr->removeAllButtons();
-    }
-    
-    // Mostrar numpad
-    if (numpadInstance) {
-        NumpadExample* numpad = static_cast<NumpadExample*>(numpadInstance);
-        numpad->createNumpad();
-    }
-    
-    telaAtual = TELA_NUMPAD;
-    
-    // Criar o botão de troca com pequeno delay para garantir que tudo esteja pronto
-    lv_timer_t* timer = lv_timer_create([](lv_timer_t* t) {
-        ScreenManager* sm = ScreenManager::getInstance();
-        if (sm) {
-            sm->createScreenSwitchButton();
-        }
-        lv_timer_del(t);
-    }, 100, nullptr);
-    
-    esp_rom_printf("Tela numpad ativada");
-}
-
-void ScreenManager::showJornadaScreen() {
-    esp_rom_printf("Mostrando tela de jornada");
-    
-    // Limpar numpad se existir
-    if (numpadInstance) {
-        NumpadExample* numpad = static_cast<NumpadExample*>(numpadInstance);
-        numpad->clearNumpad();
-    }
-    
-    // Limpar todos os botões primeiro
-    ButtonManager* mgr = ButtonManager::getInstance();
-    if (mgr) {
-        mgr->removeAllButtons();
-    }
-    
-    // Mostrar teclado de jornada
-    if (jornadaInstance) {
-        jornadaInstance->createKeyboard();
-    }
-    
-    telaAtual = TELA_JORNADA;
-    
-    // Criar o botão de troca com pequeno delay para garantir que tudo esteja pronto
-    lv_timer_t* timer = lv_timer_create([](lv_timer_t* t) {
-        ScreenManager* sm = ScreenManager::getInstance();
-        if (sm) {
-            sm->createScreenSwitchButton();
-        }
-        lv_timer_del(t);
-    }, 100, nullptr);
-    
-    esp_rom_printf("Tela jornada ativada");
-}
-
-void ScreenManager::toggleScreen() {
-    if (telaAtual == TELA_NUMPAD) {
-        showJornadaScreen();
-    } else {
-        showNumpadScreen();
-    }
-}
-
-// ============================================================================
-// FUNÇÕES HELPER GLOBAIS (extern C para acesso de main.cpp)
-// ============================================================================
-
-extern "C" void initScreenManager() {
-    esp_rom_printf("Inicializando sistema de gerenciamento de telas");
-    ScreenManager* mgr = ScreenManager::getInstance();
-    if (mgr) {
-        mgr->init();
-    } else {
-        esp_rom_printf("ERRO: Falha ao criar ScreenManager!");
-    }
-}
-
-void showNumpadKeyboard() {
-    ScreenManager* mgr = ScreenManager::getInstance();
-    if (mgr) {
-        mgr->showNumpadScreen();
-    } else {
-        // Fallback direto
-        NumpadExample* numpad = NumpadExample::getInstance();
-        numpad->init();
-        numpad->createNumpad();
-    }
-}
-
-void showJornadaKeyboard() {
-    ScreenManager* mgr = ScreenManager::getInstance();
-    if (mgr) {
-        mgr->showJornadaScreen();
-    } else {
-        // Fallback direto
-        JornadaKeyboard* jornada = JornadaKeyboard::getInstance();
-        jornada->init();
-        jornada->createKeyboard();
-    }
-}
-
-// Função de teste para alternar telas via serial
-void toggleKeyboard() {
-    ScreenManager* mgr = ScreenManager::getInstance();
-    if (mgr) {
-        mgr->toggleScreen();
-    }
 }
 
 // ============================================================================

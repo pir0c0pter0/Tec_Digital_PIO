@@ -66,12 +66,8 @@ private:
     lv_obj_t* popupMotorista;
     TipoAcao acaoPendente;
 
-    // DEPRECATED: usar instancias per-screen via new JornadaKeyboard()
-    static JornadaKeyboard* instance;
-
     // Callbacks (static porque LVGL requer ponteiros de funcao C-compatible)
-    // Resolvem instancia via lv_obj user_data, nao via getInstance()
-    static void onActionButtonClick(int buttonId);  // DEPRECATED: substituido por lambda
+    // Resolvem instancia via lv_obj user_data
     static void onMotoristaSelectClick(lv_event_t* e);
     static void onCancelPopupClick(lv_event_t* e);
     
@@ -96,14 +92,10 @@ public:
     JornadaKeyboard();
     ~JornadaKeyboard();
 
-    // DEPRECATED: usar instancias per-screen via new JornadaKeyboard()
-    static JornadaKeyboard* getInstance();
-
     // StatusBar persistente (para mensagens de status)
     void setStatusBar(StatusBar* bar);
-    
+
     // Inicialização
-    void init();
     void init(ButtonManager* mgr);
     void createKeyboard();
     void clearKeyboard();
@@ -119,81 +111,5 @@ public:
     // Obter estado atual
     EstadoMotorista getEstadoMotorista(TipoAcao acao, int motorista);
 };
-
-// ============================================================================
-// CLASSE SCREEN MANAGER - GERENCIADOR DE TELAS
-// ============================================================================
-
-class ScreenManager {
-private:
-    enum TelaAtiva {
-        TELA_NUMPAD = 0,
-        TELA_JORNADA = 1
-    };
-    
-    TelaAtiva telaAtual;
-    lv_obj_t* container;
-    
-    // Instâncias das telas
-    void* numpadInstance;  // NumpadExample*
-    JornadaKeyboard* jornadaInstance;
-    
-    // Botão de troca de tela
-    lv_obj_t* btnScreenSwitch;
-    
-    // Singleton
-    static ScreenManager* instance;
-    
-    // Callbacks
-    static void onScreenSwitchClick(lv_event_t* e);
-    
-    // Criar botão de troca de tela
-    void createScreenSwitchButton();
-    
-public:
-    ScreenManager();
-    ~ScreenManager();
-    
-    static ScreenManager* getInstance();
-    
-    void init();
-    void showNumpadScreen();
-    void showJornadaScreen();
-    void toggleScreen();
-    
-    TelaAtiva getTelaAtual() const { return telaAtual; }
-};
-
-// ============================================================================
-// FUNÇÕES HELPER (extern C para acesso de main.cpp)
-// ============================================================================
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * Inicializa o gerenciador de telas
- */
-void initScreenManager();
-
-/**
- * Mostra tela do teclado numérico
- */
-void showNumpadKeyboard();
-
-/**
- * Mostra tela do teclado de jornada
- */
-void showJornadaKeyboard();
-
-/**
- * Alterna entre os teclados (para teste)
- */
-void toggleKeyboard();
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // JORNADA_KEYBOARD_H

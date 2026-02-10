@@ -39,29 +39,17 @@ private:
     lv_timer_t* timeoutTimer;
     unsigned long lastDigitTime;  // Timestamp do último dígito digitado
     
-    // DEPRECATED: substituidos por lambdas em createNumpad()
-    static void onDigitClick(int buttonId);
-    static void onOkClick(int buttonId);
-    static void onCancelClick(int buttonId);
-    
     // Callback do timer de timeout
     static void timeoutTimerCallback(lv_timer_t* timer);
 
     // Gerenciamento do timer (startTimeoutTimer privado, stop publico)
     void startTimeoutTimer();
-    
-    // DEPRECATED: usar instancias per-screen via new NumpadExample()
-    static NumpadExample* instance;
 
 public:
     NumpadExample();
     ~NumpadExample();
 
-    // DEPRECATED: usar instancias per-screen via new NumpadExample()
-    static NumpadExample* getInstance();
-    
     // Inicialização
-    void init();
     void init(ButtonManager* mgr);
     void createNumpad();
     void clearNumpad();
@@ -89,19 +77,5 @@ public:
 
     void resetToInitialMessage();
 };
-
-// ============================================================================
-// FUNÇÕES HELPER
-// ============================================================================
-
-/**
- * Cria e mostra o teclado numérico
- */
-void showNumpad();
-
-/**
- * Remove o teclado numérico
- */
-void hideNumpad();
 
 #endif // NUMPAD_EXAMPLE_H
