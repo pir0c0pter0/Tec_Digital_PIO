@@ -6,6 +6,7 @@
 
 #include "numpad_example.h"
 #include "button_manager.h"  // Agora com o sistema robusto
+#include "ui/widgets/status_bar.h"
 #include "esp_bsp.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -37,8 +38,9 @@ static NumpadExample* g_numpadInstance = nullptr;
 // CONSTRUTOR E DESTRUTOR
 // ============================================================================
 
-NumpadExample::NumpadExample() : 
+NumpadExample::NumpadExample() :
     btnManager(nullptr),
+    statusBar_(nullptr),
     currentNumber(""),
     maxDigits(11),
     displayLabel(nullptr),
@@ -311,10 +313,10 @@ void NumpadExample::clearNumpad() {
 // ============================================================================
 
 void NumpadExample::resetToInitialMessage() {
-    if (btnManager) {
-        btnManager->setStatusMessage("Digite o código",
-                                    lv_color_hex(0x888888),
-                                    &lv_font_montserrat_16);
+    if (statusBar_) {
+        statusBar_->setMessage("Digite o codigo",
+                               lv_color_hex(0x888888),
+                               &lv_font_montserrat_16);
     }
 }
 
@@ -334,6 +336,19 @@ void NumpadExample::stopTimeoutTimer() {
     }
 }
 
+void NumpadExample::setStatusBar(StatusBar* bar) {
+    statusBar_ = bar;
+}
+
+void NumpadExample::onExitScreen() {
+    currentNumber = "";
+    lastDigitTime = 0;
+    stopTimeoutTimer();
+    if (statusBar_) {
+        statusBar_->clearMessage();
+    }
+}
+
 void NumpadExample::timeoutTimerCallback(lv_timer_t* timer) {
     NumpadExample* numpad = g_numpadInstance;
     if (!numpad) return;
@@ -347,16 +362,16 @@ void NumpadExample::timeoutTimerCallback(lv_timer_t* timer) {
     
     if (timeSinceLastDigit >= NUMPAD_TIMEOUT_MS) {
         esp_rom_printf("⏱️ TIMEOUT: Limpando número");
-        
+
         playAudioFile("/nok_click.mp3");
         numpad->currentNumber = "";
         numpad->lastDigitTime = 0;
-        
-        if (numpad->btnManager) {
-            numpad->btnManager->setStatusMessage("Timeout - Código limpo",
-                                                lv_color_hex(0xFF4444),
-                                                &lv_font_montserrat_18,
-                                                3000);
+
+        if (numpad->statusBar_) {
+            numpad->statusBar_->setMessage("Timeout - Codigo limpo",
+                                           lv_color_hex(0xFF4444),
+                                           &lv_font_montserrat_18,
+                                           3000);
         }
     }
 }
@@ -368,12 +383,13 @@ void NumpadExample::timeoutTimerCallback(lv_timer_t* timer) {
 void NumpadExample::addDigit(int digit) {
     if (currentNumber.length() >= maxDigits) {
         esp_rom_printf("Numero maximo de digitos atingido");
-        
-        // Mensagem de erro em laranja com timeout
-        btnManager->setStatusMessage("Maximo 11 digitos!",
-                                    lv_color_hex(0xFFAA00),  // Laranja
-                                    &lv_font_montserrat_16,   // Tamanho médio
-                                    2000);                    // 2 segundos
+
+        if (statusBar_) {
+            statusBar_->setMessage("Maximo 11 digitos!",
+                                   lv_color_hex(0xFFAA00),
+                                   &lv_font_montserrat_16,
+                                   2000);
+        }
         playAudioFile("/nok_click.mp3");
         return;
     }
@@ -417,20 +433,18 @@ void NumpadExample::clearNumber() {
 }
 
 void NumpadExample::updateDisplay() {
-    if (!btnManager) return;
-    
+    if (!statusBar_) return;
+
     if (currentNumber.empty()) {
-        // Mensagem inicial em cinza claro, tamanho médio
-        btnManager->setStatusMessage("Digite o codigo",
-                                    lv_color_hex(0x888888),  // Cinza
-                                    &lv_font_montserrat_16);  // Tamanho médio
+        // Mensagem inicial em cinza claro
+        statusBar_->setMessage("Digite o codigo",
+                               lv_color_hex(0x888888),
+                               &lv_font_montserrat_16);
     } else {
-        // Número digitado em branco, tamanho grande
-        char buffer[32];
-        snprintf(buffer, sizeof(buffer), "%s", currentNumber.c_str());
-        btnManager->setStatusMessage(buffer,
-                                    lv_color_hex(0xFFFFFF),  // Branco
-                                    &lv_font_montserrat_24);  // Tamanho grande
+        // Preview do numero digitado em branco, tamanho grande
+        statusBar_->setMessage(currentNumber.c_str(),
+                               lv_color_hex(0xFFFFFF),
+                               &lv_font_montserrat_24);
     }
 }
 
@@ -460,11 +474,13 @@ void NumpadExample::onOkClick(int buttonId) {
     // Verifica se há número digitado
     if (number.empty()) {
         playAudioFile("/nok_click.mp3");
-        numpad->btnManager->setStatusMessage("Nenhum numero digitado!",
-                                            lv_color_hex(0xFFFF00),
-                                            &lv_font_montserrat_16,
-                                            2500);
-        numpad->btnManager->showPopup("Aviso", 
+        if (numpad->statusBar_) {
+            numpad->statusBar_->setMessage("Nenhum numero digitado!",
+                                           lv_color_hex(0xFFFF00),
+                                           &lv_font_montserrat_16,
+                                           2500);
+        }
+        numpad->btnManager->showPopup("Aviso",
                                       "Nenhum numero digitado!",
                                       POPUP_WARNING, false, nullptr);
         return;
@@ -481,11 +497,13 @@ void NumpadExample::onOkClick(int buttonId) {
     
     if (isOnlyZeros) {
         playAudioFile("/nok_click.mp3");
-        numpad->btnManager->setStatusMessage("Numero nao pode ser zero!",
-                                            lv_color_hex(0xFF0000),
-                                            &lv_font_montserrat_16,
-                                            3000);
-        numpad->btnManager->showPopup("Erro", 
+        if (numpad->statusBar_) {
+            numpad->statusBar_->setMessage("Numero nao pode ser zero!",
+                                           lv_color_hex(0xFF0000),
+                                           &lv_font_montserrat_16,
+                                           3000);
+        }
+        numpad->btnManager->showPopup("Erro",
                                       "Numero nao pode ser zero!",
                                       POPUP_ERROR, false, nullptr);
         esp_rom_printf("ERRO: Numero zero nao permitido");
@@ -494,13 +512,15 @@ void NumpadExample::onOkClick(int buttonId) {
     
     // Número válido - continua...
     playAudioFile("/ok_click.mp3");
-    
-    char successMsg[100];
-    snprintf(successMsg, sizeof(successMsg), "Codigo %s enviado!", number.c_str());
-    numpad->btnManager->setStatusMessage(successMsg,
-                                        lv_color_hex(0x00FF00),
-                                        &lv_font_montserrat_18,
-                                        3000);
+
+    if (numpad->statusBar_) {
+        char successMsg[100];
+        snprintf(successMsg, sizeof(successMsg), "Codigo %s enviado!", number.c_str());
+        numpad->statusBar_->setMessage(successMsg,
+                                       lv_color_hex(0x00FF00),
+                                       &lv_font_montserrat_18,
+                                       3000);
+    }
     
     char message[100];
     snprintf(message, sizeof(message), 
@@ -521,15 +541,17 @@ void NumpadExample::onCancelClick(int buttonId) {
     
     // Toca som de cancelamento
     playAudioFile("/nok_click.mp3");
-    
+
     // Limpa os números
     numpad->clearNumber();
-    
+
     // Mensagem de cancelamento em cinza escuro com timeout
-    numpad->btnManager->setStatusMessage("Operacao cancelada",
-                                        lv_color_hex(0x666666),  // Cinza escuro
-                                        &lv_font_montserrat_16,   // Tamanho médio
-                                        2000);                    // 2 segundos
+    if (numpad->statusBar_) {
+        numpad->statusBar_->setMessage("Operacao cancelada",
+                                       lv_color_hex(0x666666),
+                                       &lv_font_montserrat_16,
+                                       2000);
+    }
     
     esp_rom_printf("Cancelar pressionado - numeros limpos");
 }

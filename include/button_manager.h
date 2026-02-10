@@ -118,7 +118,7 @@ struct GridButton {
     bool enabled;
 };
 
-struct StatusBarData {
+struct BtnStatusBarData {
     bool ignicaoOn;
     unsigned long tempoIgnicao;
     unsigned long tempoJornada;
@@ -279,7 +279,7 @@ public:
     GridButton* getButton(int buttonId);
     
     // Barra de status
-    void updateStatusBar(const StatusBarData& data);
+    void updateStatusBar(const BtnStatusBarData& data);
     void setStatusMessage(const char* message);
     void setStatusMessage(const char* message, lv_color_t color,
                          const lv_font_t* font = &lv_font_montserrat_20,

@@ -121,9 +121,9 @@ void NumpadScreen::onEnter() {
 void NumpadScreen::onExit() {
     ESP_LOGI(TAG, "NumpadScreen: onExit");
 
-    // Parar timer de timeout (evita callbacks em objetos deletados)
+    // Zerar numero + parar timer + limpar mensagem do StatusBar
     if (numpad_) {
-        numpad_->stopTimeoutTimer();
+        numpad_->onExitScreen();
     }
 
     // Fechar popup generico do ButtonManager (se aberto)

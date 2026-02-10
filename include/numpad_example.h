@@ -15,6 +15,9 @@
 #include "button_manager.h"
 #include <string>
 
+// Forward declaration
+class StatusBar;
+
 // ============================================================================
 // CLASSE NUMPAD EXAMPLE
 // ============================================================================
@@ -22,6 +25,7 @@
 class NumpadExample {
 private:
     ButtonManager* btnManager;
+    StatusBar* statusBar_;
     std::string currentNumber;
     int maxDigits;
     
@@ -65,15 +69,21 @@ public:
     // Parar timer de timeout (chamado pelo ScreenManager ao sair da tela)
     void stopTimeoutTimer();
 
+    // StatusBar persistente para preview dos digitos
+    void setStatusBar(StatusBar* bar);
+
+    // Lifecycle da tela (chamado pelo NumpadScreen)
+    void onExitScreen();
+
     // Operações
     void addDigit(int digit);
     void removeLastDigit();
     void clearNumber();
     std::string getNumber() const { return currentNumber; }
-    
+
     // Atualização do display
     void updateDisplay();
-    
+
     // Configurações
     void setMaxDigits(int max) { maxDigits = max; }
 

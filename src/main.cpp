@@ -52,6 +52,7 @@
 #include "ui/widgets/status_bar.h"
 #include "ui/screens/jornada_screen.h"
 #include "ui/screens/numpad_screen.h"
+#include "numpad_example.h"
 
 // ============================================================================
 // TAG DE LOG
@@ -161,6 +162,9 @@ static void system_task(void *arg) {
     // (evita lag na primeira navegacao)
     jornadaScreen.create();
     numpadScreen.create();
+
+    // Conecta StatusBar ao NumpadExample (preview dos digitos na barra persistente)
+    NumpadExample::getInstance()->setStatusBar(&statusBar);
 
     // Mostra tela inicial (Numpad, sem animacao)
     screenMgr->showInitialScreen(ScreenType::NUMPAD);

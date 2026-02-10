@@ -792,7 +792,7 @@ const char* ButtonManager::getIconText(ButtonIcon icon) {
 // BARRA DE STATUS
 // ============================================================================
 
-void ButtonManager::updateStatusBar(const StatusBarData& data) {
+void ButtonManager::updateStatusBar(const BtnStatusBarData& data) {
     if (!statusBar) return;
     
     if (bsp_display_lock(100)) {
@@ -1235,7 +1235,7 @@ void* buttonManagerGetInstance(void) {
 void buttonManagerUpdateStatusBar(bool ignicaoOn, uint32_t tempoIgnicao, uint32_t tempoJornada, const char* msg) {
     ButtonManager* mgr = ButtonManager::getInstance();
     if (mgr) {
-        StatusBarData data = {
+        BtnStatusBarData data = {
             .ignicaoOn = ignicaoOn,
             .tempoIgnicao = tempoIgnicao,
             .tempoJornada = tempoJornada,
