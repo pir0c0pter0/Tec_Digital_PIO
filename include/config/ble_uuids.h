@@ -114,4 +114,41 @@ static const ble_uuid128_t BLE_UUID_SYSTEM_DIAGNOSTICS_CHR =
     BLE_UUID128_INIT(0x03, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
                      0x00, 0x00, 0x4A, 0x47, 0x01, 0x03, 0x00, 0x00);
 
+// ============================================================================
+// SERVICO DE PROVISIONAMENTO OTA (grupo 4)
+// UUID base: 0000XXXX-4A47-0000-4763-7365-00000004
+// ============================================================================
+
+/**
+ * OTA Provisioning Service UUID: 00000400-4A47-0000-4763-7365-00000004
+ * Little-endian: 04 00 00 00 | 65 73 63 47 | 00 00 47 4A | 00 04 00 00
+ */
+static const ble_uuid128_t BLE_UUID_OTA_PROV_SVC =
+    BLE_UUID128_INIT(0x04, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x00, 0x04, 0x00, 0x00);
+
+/**
+ * Wi-Fi Credentials Characteristic UUID: 00000401-4A47-0000-4763-7365-00000004
+ * Little-endian: 04 00 00 00 | 65 73 63 47 | 00 00 47 4A | 01 04 00 00
+ */
+static const ble_uuid128_t BLE_UUID_OTA_PROV_WIFI_CREDS_CHR =
+    BLE_UUID128_INIT(0x04, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x01, 0x04, 0x00, 0x00);
+
+/**
+ * OTA Status Characteristic UUID: 00000402-4A47-0000-4763-7365-00000004
+ * Little-endian: 04 00 00 00 | 65 73 63 47 | 00 00 47 4A | 02 04 00 00
+ */
+static const ble_uuid128_t BLE_UUID_OTA_PROV_STATUS_CHR =
+    BLE_UUID128_INIT(0x04, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x02, 0x04, 0x00, 0x00);
+
+/**
+ * IP Address Characteristic UUID: 00000403-4A47-0000-4763-7365-00000004
+ * Little-endian: 04 00 00 00 | 65 73 63 47 | 00 00 47 4A | 03 04 00 00
+ */
+static const ble_uuid128_t BLE_UUID_OTA_PROV_IP_ADDR_CHR =
+    BLE_UUID128_INIT(0x04, 0x00, 0x00, 0x00, 0x65, 0x73, 0x63, 0x47,
+                     0x00, 0x00, 0x4A, 0x47, 0x03, 0x04, 0x00, 0x00);
+
 #endif // BLE_UUIDS_H

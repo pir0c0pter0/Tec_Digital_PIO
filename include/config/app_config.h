@@ -294,6 +294,22 @@ extern "C" {
 #define OTA_SELF_TEST_TIMEOUT_S 60
 
 // ============================================================================
+// CONFIGURACOES DE OTA (Wi-Fi)
+// ============================================================================
+
+#define OTA_HTTP_SERVER_PORT        8080
+#define OTA_HTTP_STACK_SIZE         8192
+#define OTA_HTTP_RECV_TIMEOUT_S     30
+#define OTA_RECEIVE_BUFFER_SIZE     4096
+#define OTA_MAX_IMAGE_SIZE          (3 * 1024 * 1024)
+#define OTA_WIFI_CONNECT_TIMEOUT_MS 15000
+#define OTA_WIFI_MAX_RETRY          5
+#define OTA_REBOOT_DELAY_MS         500
+#define OTA_BLE_DISCONNECT_DELAY_MS 200
+#define OTA_PROGRESS_QUEUE_SIZE     1
+#define OTA_PROV_EVENT_QUEUE_SIZE   4
+
+// ============================================================================
 // CONFIGURACOES DE BLE
 // ============================================================================
 
