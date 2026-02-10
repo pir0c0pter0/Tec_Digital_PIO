@@ -30,7 +30,6 @@
 // Bond store: NimBLE auto-configura via CONFIG_BT_NIMBLE_NVS_PERSIST=y
 
 // ESP-IDF
-#include "esp_bt.h"
 #include "esp_mac.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
@@ -99,24 +98,8 @@ bool BleService::init() {
     ESP_LOGI(TAG, "NVS default inicializado para bonds BLE");
 
     // ========================================================================
-    // 2. Inicializa controller BT
-    // ========================================================================
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    ret = esp_bt_controller_init(&bt_cfg);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Falha ao inicializar BT controller: %s", esp_err_to_name(ret));
-        return false;
-    }
-
-    ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Falha ao habilitar BT controller: %s", esp_err_to_name(ret));
-        return false;
-    }
-    ESP_LOGI(TAG, "BT controller inicializado (modo BLE)");
-
-    // ========================================================================
-    // 3. Inicializa NimBLE port
+    // 2. Inicializa NimBLE port
+    //    ESP-IDF 5.3: nimble_port_init() ja inicializa controller BT internamente
     // ========================================================================
     ret = nimble_port_init();
     if (ret != ESP_OK) {
@@ -125,14 +108,14 @@ bool BleService::init() {
     }
 
     // ========================================================================
-    // 4. Configura callbacks do host
+    // 3. Configura callbacks do host
     // ========================================================================
     ble_hs_cfg.reset_cb = onBleReset;
     ble_hs_cfg.sync_cb = onBleSync;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
     // ========================================================================
-    // 5. Configura seguranca: LE Secure Connections (Just Works)
+    // 4. Configura seguranca: LE Secure Connections (Just Works)
     // ========================================================================
     ble_hs_cfg.sm_io_cap = BLE_HS_IO_NO_INPUT_OUTPUT;
     ble_hs_cfg.sm_bonding = 1;
@@ -144,7 +127,7 @@ bool BleService::init() {
     ESP_LOGI(TAG, "Seguranca configurada: LE Secure Connections (Just Works)");
 
     // ========================================================================
-    // 6. Inicializa GATT server (GAP, GATT, DIS, Journey, Diagnostics)
+    // 5. Inicializa GATT server (GAP, GATT, DIS, Journey, Diagnostics)
     // ========================================================================
     {
         int gatt_rc = gatt_svr_init();
@@ -155,7 +138,7 @@ bool BleService::init() {
     }
 
     // ========================================================================
-    // 7. Constroi nome do dispositivo com ultimos 2 bytes do MAC BT
+    // 6. Constroi nome do dispositivo com ultimos 2 bytes do MAC BT
     // ========================================================================
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_BT);
@@ -171,7 +154,7 @@ bool BleService::init() {
     // Bond store inicializado automaticamente pelo NimBLE via NVS_PERSIST=y
 
     // ========================================================================
-    // 9. Define MTU preferido
+    // 7. Define MTU preferido
     // ========================================================================
     ret = ble_att_set_preferred_mtu(BLE_MTU_PREFERRED);
     if (ret != 0) {
@@ -180,7 +163,7 @@ bool BleService::init() {
     ESP_LOGI(TAG, "MTU preferido: %d", BLE_MTU_PREFERRED);
 
     // ========================================================================
-    // 10. Inicializa fila de eventos BLE (ponte NimBLE -> UI)
+    // 8. Inicializa fila de eventos BLE (ponte NimBLE -> UI)
     // ========================================================================
     if (!ble_event_queue_init()) {
         ESP_LOGE(TAG, "Falha ao criar fila de eventos BLE (UI nao recebera updates)");
@@ -188,7 +171,7 @@ bool BleService::init() {
     }
 
     // ========================================================================
-    // 11. Inicia task do host NimBLE
+    // 9. Inicia task do host NimBLE
     // ========================================================================
     nimble_port_freertos_init(bleHostTask);
 
@@ -329,11 +312,8 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
             ble_post_event(BleStatus::CONNECTED, event->connect.conn_handle);
             gatt_journey_set_conn_handle(event->connect.conn_handle);
 
-            // Inicia seguranca (LE Secure Connections)
-            int rc = ble_gap_security_initiate(event->connect.conn_handle);
-            if (rc != 0) {
-                ESP_LOGW(TAG, "Falha ao iniciar seguranca: %d", rc);
-            }
+            // Seguranca sera iniciada pelo central (celular) quando necessario
+            // Nao chamamos ble_gap_security_initiate() para evitar conflito com nRF Connect
         } else {
             ESP_LOGW(TAG, "Falha na conexao: status=%d", event->connect.status);
             self->startAdvertisingInternal();
@@ -398,6 +378,26 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         // Rastreia subscricao por caracteristica para notificacoes
         gatt_journey_update_subscription(event->subscribe.attr_handle,
                                          event->subscribe.cur_notify);
+        break;
+    }
+
+    case BLE_GAP_EVENT_PASSKEY_ACTION: {
+        // Handler obrigatorio para completar pairing (mesmo Just Works)
+        ESP_LOGI(TAG, "Passkey action: %d", event->passkey.params.action);
+        struct ble_sm_io pkey = {};
+        pkey.action = event->passkey.params.action;
+
+        if (event->passkey.params.action == BLE_SM_IOACT_NUMCMP) {
+            // Comparacao numerica: aceita automaticamente (Just Works)
+            ESP_LOGI(TAG, "Numeric comparison: %lu — aceitando", (unsigned long)event->passkey.params.numcmp);
+            pkey.numcmp_accept = 1;
+        }
+        // Para IOACT_NONE: nenhuma acao necessaria, apenas injeta resposta vazia
+
+        int rc = ble_sm_inject_io(event->passkey.conn_handle, &pkey);
+        if (rc != 0) {
+            ESP_LOGW(TAG, "Falha ao injetar passkey IO: %d", rc);
+        }
         break;
     }
 
