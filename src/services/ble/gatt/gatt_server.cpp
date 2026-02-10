@@ -16,6 +16,7 @@
 #include "services/ble/gatt/gatt_server.h"
 #include "services/ble/gatt/gatt_journey.h"
 #include "services/ble/gatt/gatt_diagnostics.h"
+#include "services/ble/gatt/gatt_config.h"
 #include "config/ble_uuids.h"
 #include "config/app_config.h"
 
@@ -45,6 +46,8 @@ static const char* TAG = "GATT_SVR";
 
 uint16_t gatt_journey_state_val_handle = 0;
 uint16_t gatt_ignition_val_handle = 0;
+uint16_t gatt_config_volume_val_handle = 0;
+uint16_t gatt_config_brightness_val_handle = 0;
 
 // ============================================================================
 // TABELA DE SERVICOS GATT
@@ -102,6 +105,56 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         },
     },
     // ========================================================================
+    // Configuration Service (custom UUID)
+    // ========================================================================
+    {
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = &BLE_UUID_CONFIG_SVC.u,
+        .characteristics = (struct ble_gatt_chr_def[]) {
+            // Volume: leitura + escrita + notificacao
+            {
+                .uuid = &BLE_UUID_CONFIG_VOLUME_CHR.u,
+                .access_cb = config_volume_access,
+                .arg = NULL,
+                .descriptors = NULL,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
+                .min_key_size = 0,
+                .val_handle = &gatt_config_volume_val_handle,
+            },
+            // Brightness: leitura + escrita + notificacao
+            {
+                .uuid = &BLE_UUID_CONFIG_BRIGHTNESS_CHR.u,
+                .access_cb = config_brightness_access,
+                .arg = NULL,
+                .descriptors = NULL,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
+                .min_key_size = 0,
+                .val_handle = &gatt_config_brightness_val_handle,
+            },
+            // Driver Name: leitura + escrita
+            {
+                .uuid = &BLE_UUID_CONFIG_DRIVER_NAME_CHR.u,
+                .access_cb = config_driver_name_access,
+                .arg = NULL,
+                .descriptors = NULL,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
+                .min_key_size = 0,
+                .val_handle = NULL,
+            },
+            // Time Sync: escrita apenas
+            {
+                .uuid = &BLE_UUID_CONFIG_TIME_SYNC_CHR.u,
+                .access_cb = config_time_sync_access,
+                .arg = NULL,
+                .descriptors = NULL,
+                .flags = BLE_GATT_CHR_F_WRITE,
+                .min_key_size = 0,
+                .val_handle = NULL,
+            },
+            { 0 }, // Terminador de caracteristicas
+        },
+    },
+    // ========================================================================
     // Terminador de servicos
     // ========================================================================
     { 0 },
@@ -143,6 +196,6 @@ int gatt_svr_init(void) {
         return rc;
     }
 
-    ESP_LOGI(TAG, "GATT server inicializado: DIS + Journey (2 chr) + Diagnostics (1 chr)");
+    ESP_LOGI(TAG, "GATT server inicializado: DIS + Journey (2 chr) + Diagnostics (1 chr) + Config (4 chr)");
     return 0;
 }

@@ -7,6 +7,7 @@
  * - Device Information Service (SIG 0x180A)
  * - Journey Service (custom UUID)
  * - Diagnostics Service (custom UUID)
+ * - Configuration Service (custom UUID)
  *
  * Chamado durante init do NimBLE em ble_service.cpp.
  *
@@ -39,6 +40,16 @@ extern uint16_t gatt_journey_state_val_handle;
  * Value handle da caracteristica Ignition Status (para notificacoes)
  */
 extern uint16_t gatt_ignition_val_handle;
+
+/**
+ * Value handle da caracteristica Config Volume (para notificacoes)
+ */
+extern uint16_t gatt_config_volume_val_handle;
+
+/**
+ * Value handle da caracteristica Config Brightness (para notificacoes)
+ */
+extern uint16_t gatt_config_brightness_val_handle;
 
 #ifdef __cplusplus
 }
