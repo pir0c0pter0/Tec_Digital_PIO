@@ -36,15 +36,21 @@ There is no test framework configured — this is bare-metal embedded code verif
 ```
 main.cpp (orchestration & event loop)
     ↓
-Services: IgnicaoService, JornadaService, AudioManager
+Services: IgnicaoService, JornadaService, AudioManager, BleService, NvsManager
     ↓
-Abstract Interfaces: i_ignicao.h, i_jornada.h, i_audio.h, i_screen.h
+BLE: NimBLE GATT Server (Journey, Config, Diagnostics, DIS services)
     ↓
-UI Components: ButtonManager (4×3 grid), Theme, StatusBar
+Abstract Interfaces: i_ignicao.h, i_jornada.h, i_audio.h, i_screen.h, i_ble.h, i_nvs.h
+    ↓
+Screen Manager: ScreenManagerImpl (push/pop stack, 3 screens)
+    ↓
+UI Screens: JornadaScreen, NumpadScreen, SettingsScreen + StatusBar (lv_layer_top)
+    ↓
+UI Components: ButtonManager (4×3 grid), Theme, LVGL Sliders
     ↓
 HAL/Drivers: AXS15231B LCD (QSPI), Touch (I2C), I2S Audio, GPIO
     ↓
-ESP-IDF / FreeRTOS
+ESP-IDF 5.3.1 / FreeRTOS / NimBLE
 ```
 
 ### Core Distribution
@@ -56,9 +62,23 @@ ESP-IDF / FreeRTOS
 
 | Area | Path | Purpose |
 |------|------|---------|
-| Entry point | `src/main.cpp` | app_main(), system_task loop (5ms tick) |
-| Configuration | `include/config/app_config.h` | All 78+ system constants (pins, timings, colors, paths) |
-| Interfaces | `include/interfaces/i_*.h` | Abstract service contracts |
+| Entry point | `src/main.cpp` | app_main(), system_task loop (5ms tick), screen/BLE/config event processing |
+| Configuration | `include/config/app_config.h` | All system constants (pins, timings, colors, paths, NVS keys) |
+| BLE UUIDs | `include/config/ble_uuids.h` | All 128-bit UUIDs (Journey, Config, Diagnostics groups) |
+| Interfaces | `include/interfaces/i_*.h` | Abstract contracts: screen, BLE, NVS, ignicao, jornada, audio |
+| Screen manager | `src/ui/screens/screen_manager.cpp` | Push/pop navigation stack, cycleTo(), animated transitions |
+| Jornada screen | `src/ui/screens/jornada_screen.cpp` | Journey keypad screen (wraps ButtonManager) |
+| Numpad screen | `src/ui/screens/numpad_screen.cpp` | Numeric keypad screen (wraps ButtonManager) |
+| Settings screen | `src/ui/screens/settings_screen.cpp` | Volume/brightness sliders, system info (direct LVGL widgets) |
+| Status bar | `src/ui/widgets/status_bar.cpp` | Persistent bar on lv_layer_top() with ignition/BLE/menu |
+| BLE service | `src/services/ble/ble_service.cpp` | NimBLE singleton, GAP handler, connection management |
+| GATT server | `src/services/ble/gatt/gatt_server.cpp` | Central GATT table (DIS + Journey + Diagnostics + Config) |
+| GATT journey | `src/services/ble/gatt/gatt_journey.cpp` | Journey state + ignition characteristics (read/notify) |
+| GATT config | `src/services/ble/gatt/gatt_config.cpp` | Volume/brightness/driver name/time sync (read/write/notify) |
+| GATT diagnostics | `src/services/ble/gatt/gatt_diagnostics.cpp` | Heap, uptime, queue depth (read-only) |
+| GATT validation | `include/services/ble/gatt/gatt_validation.h` | Header-only write validation utility |
+| BLE event queue | `src/services/ble/ble_event_queue.cpp` | FreeRTOS queue for BLE status → UI |
+| NVS manager | `src/services/nvs/nvs_manager.cpp` | Persistent storage (settings, journey state, driver names) |
 | Ignition service | `src/services/ignicao/` | GPIO18 monitoring with dual debounce |
 | Journey service | `src/services/jornada/` | Multi-driver state machine (up to 3 drivers, 7 states) |
 | Audio | `src/simple_audio_manager.cpp` | minimp3 decoder → I2S, queued playback (4 slots) |
@@ -71,7 +91,7 @@ ESP-IDF / FreeRTOS
 
 ### Thread Safety
 
-All shared data in services is protected by FreeRTOS mutexes. The callback pattern (IgnicaoCallback, JornadaCallback) decouples event producers from consumers.
+All shared data in services is protected by FreeRTOS mutexes. The callback pattern (IgnicaoCallback, JornadaCallback) decouples event producers from consumers. BLE-to-UI communication uses two FreeRTOS event queues (BLE status events + config events) to safely bridge NimBLE task to Core 0 where LVGL and NVS operations happen. NvsManager mutex protects flash access from any task context.
 
 ### Display
 
@@ -81,9 +101,21 @@ All shared data in services is protected by FreeRTOS mutexes. The callback patte
 
 ### Flash Partitions (partitions.csv)
 
-- `app0`: 3MB (factory app)
+- `ota_0`: 3MB (primary app)
+- `ota_1`: 3MB (OTA update target)
+- `otadata`: 8KB (OTA boot selector)
+- `nvs`: 16KB (system NVS)
+- `nvs_data`: 64KB (app settings — volume, brightness, driver names, journey state)
 - `spiffs`: 1MB (LittleFS — audio MP3s + splash PNG)
-- No OTA configured
+
+### BLE GATT Services
+
+| Service | UUID | Characteristics |
+|---------|------|----------------|
+| Device Info (SIG) | 0x180A | Manufacturer, Model, FW Version, HW Revision |
+| Journey (custom) | group 1 | State per driver (R/N), Time-in-state (R/N), Ignition (R/N) |
+| Configuration (custom) | group 2 | Volume (R/W/N), Brightness (R/W/N), Driver Name (R/W), Time Sync (W) |
+| Diagnostics (custom) | group 3 | Heap, Uptime, Queue Depth (R) |
 
 ### Audio Assets (data/)
 
@@ -97,6 +129,11 @@ All shared data in services is protected by FreeRTOS mutexes. The callback patte
 - **C/C++ mixed:** Legacy modules are C-compatible (extern "C"), newer modules are C++
 - **LVGL threading:** All LVGL calls must happen from Core 0 (system_task context)
 - **Audio is async:** Use the audio queue, never decode in the UI task
+- **BLE-to-UI via queues:** Never call LVGL or blocking NVS from NimBLE callbacks — post events to FreeRTOS queues
+- **GATT module pattern:** Each service in separate gatt_*.h/.cpp with C linkage, packed structs, per-characteristic subscription tracking
+- **Screen lifecycle:** Screens implement IScreen (create/destroy/onEnter/onExit/update), managed by ScreenManager stack
+- **NVS via NvsManager:** Never call nvs_* directly — always go through NvsManager singleton
+- **Designated initializer order:** C++ struct init fields MUST match declaration order (especially ble_gatt_chr_def)
 
 ## Hardware Pin Reference
 
