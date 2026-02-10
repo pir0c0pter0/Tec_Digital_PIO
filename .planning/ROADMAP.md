@@ -15,8 +15,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Partition table, screen manager, NVS persistence, and LVGL widget enablement
 - [x] **Phase 1.1: Screen Infrastructure Hardening** - Eliminate singletons, fix isolation bugs, prepare for configurable multi-screen (INSERTED) ✓ 2026-02-10
 - [x] **Phase 2: BLE Core** - NimBLE stack, secure connections, GATT services, and BLE-to-UI event bridge ✓ 2026-02-10
-- [ ] **Phase 3: Settings + Config Sync** - Settings screen with volume/brightness and bidirectional BLE config synchronization
-- [ ] **Phase 4: OTA** - Firmware update via BLE with integrity verification, progress UI, and rollback safety
+- [x] **Phase 3: Settings + Config Sync** - Settings screen with volume/brightness and bidirectional BLE config synchronization ✓ 2026-02-10
+- [x] **Phase 4: OTA** - Firmware update via Wi-Fi (BLE provisioned) with integrity verification, progress UI, and rollback safety ✓ 2026-02-10 (code-complete, hardware verification pending)
 - [ ] **Phase 5: Polish** - RPM/speed screen, BLE protocol documentation, and production hardening
 
 ## Phase Details
@@ -129,9 +129,9 @@ Plans:
 - A bug in OTA or self-test code can brick devices -- must test full OTA cycle (ota_0 -> ota_1 -> ota_0) and deliberate rollback on development hardware
 
 Plans:
-- [ ] 04-01-PLAN.md -- OTA types + GATT provisioning service + BLE shutdown method + constants/UUIDs
-- [ ] 04-02-PLAN.md -- Wi-Fi STA + HTTP OTA server + SHA-256 + OtaService state machine + OtaScreen UI
-- [ ] 04-03-PLAN.md -- Self-test + rollback + main.cpp integration + navigation lock + hardware verification
+- [x] 04-01-PLAN.md -- OTA types + GATT provisioning service + BLE shutdown method + constants/UUIDs
+- [x] 04-02-PLAN.md -- Wi-Fi STA + HTTP OTA server + SHA-256 + OtaService state machine + OtaScreen UI
+- [x] 04-03-PLAN.md -- Self-test + rollback + main.cpp integration + navigation lock (hardware verification pending)
 
 ### Phase 5: Polish
 **Goal**: The device displays real-time RPM and speed gauges (with placeholder data ready for an external OBD adapter), and the BLE protocol is fully documented for the mobile app development team.
@@ -165,7 +165,7 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 4 -> 5
 | 1.1 Screen Hardening | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. BLE Core | 4/4 | ✓ Complete (human verify pending) | 2026-02-10 |
 | 3. Settings + Config Sync | 3/3 | ✓ Complete (UAT 10/10 passed) | 2026-02-10 |
-| 4. OTA | 0/3 | Not started | - |
+| 4. OTA | 3/3 | ✓ Code-complete (hardware verify pending) | 2026-02-10 |
 | 5. Polish | 0/3 | Not started | - |
 
 ## Requirement Traceability

@@ -142,5 +142,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 04-03-PLAN.md Task 1 (self-test, navigation lock, main.cpp OTA integration). Task 2 = hardware verification checkpoint. Phase 04 code-complete.
+Stopped at: Phase 04 (OTA) code-complete. All 3 plans executed (18 total across project). Firmware flashed to board. Pending: hardware verification of end-to-end OTA flow (Task 2 checkpoint in 04-03). After verification, Phase 05 (Polish) is next.
 Resume file: .planning/phases/04-ota/04-03-PLAN.md (checkpoint: hardware verification)
+
+### Resume Instructions (tomorrow)
+1. Verify OTA on hardware (see checkpoint in 04-03-PLAN.md Task 2)
+2. If OTA works: `/gsd:plan-phase 5` to plan Phase 05 (Polish)
+3. If issues found: fix and re-verify before Phase 05
