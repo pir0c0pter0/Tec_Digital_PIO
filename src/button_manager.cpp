@@ -126,10 +126,10 @@ void ButtonManager::createScreen() {
         screen = lv_obj_create(NULL);
         lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), LV_PART_MAIN);
 
-        // gridContainer posicionado abaixo da StatusBar persistente (lv_layer_top)
+        // gridContainer no topo — StatusBar persistente fica na base (lv_layer_top, BOTTOM)
         gridContainer = lv_obj_create(screen);
         lv_obj_set_size(gridContainer, SCREEN_WIDTH, GRID_AREA_HEIGHT);
-        lv_obj_align(gridContainer, LV_ALIGN_TOP_LEFT, 0, STATUS_BAR_HEIGHT);
+        lv_obj_align(gridContainer, LV_ALIGN_TOP_LEFT, 0, 0);
         lv_obj_set_style_bg_color(gridContainer, lv_color_hex(0x2a2a2a), LV_PART_MAIN);
         lv_obj_set_style_border_width(gridContainer, 0, LV_PART_MAIN);
         lv_obj_set_style_pad_all(gridContainer, GRID_PADDING, LV_PART_MAIN);
@@ -728,7 +728,7 @@ const char* ButtonManager::getIconText(ButtonIcon icon) {
 lv_obj_t* ButtonManager::createPopupOverlay() {
     lv_obj_t* overlay = lv_obj_create(screen);
     lv_obj_set_size(overlay, SCREEN_WIDTH, GRID_AREA_HEIGHT);
-    lv_obj_align(overlay, LV_ALIGN_TOP_LEFT, 0, STATUS_BAR_HEIGHT);
+    lv_obj_align(overlay, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_set_style_bg_color(overlay, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_70, LV_PART_MAIN);
     lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
