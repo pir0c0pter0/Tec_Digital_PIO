@@ -290,14 +290,19 @@ extern "C" {
 #define OTA_SELF_TEST_TIMEOUT_S 60
 
 // ============================================================================
-// CONFIGURACOES DE BLE (placeholders para Phase 2)
+// CONFIGURACOES DE BLE
 // ============================================================================
 
-#define BLE_DEVICE_NAME_PREFIX  "GS-Jornada"
-#define BLE_MTU_PREFERRED       256
-#define BLE_TASK_CORE           0
-#define BLE_TASK_PRIORITY       3
-#define BLE_TASK_STACK_SIZE     (8 * 1024)
+#define BLE_DEVICE_NAME_PREFIX          "GS-Jornada"
+#define BLE_MTU_PREFERRED               512
+#define BLE_MAX_CONNECTIONS             1
+#define BLE_TASK_CORE                   0
+#define BLE_TASK_PRIORITY               3
+#define BLE_TASK_STACK_SIZE             (8 * 1024)
+#define BLE_ADV_INTERVAL_MIN            0x0020  // 20 * 0.625ms = 12.5ms
+#define BLE_ADV_INTERVAL_MAX            0x0040  // 64 * 0.625ms = 40ms
+#define BLE_PROTOCOL_VERSION            "BLE-P1.0"
+#define BLE_NOTIFICATION_MIN_INTERVAL_MS 100
 
 // ============================================================================
 // CONFIGURACOES DE NAVEGACAO DE TELAS
