@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 2 of 5 (BLE Core)
-Plan: 0 of N in current phase (phase 01 + 01.1 complete, phase 02 not yet planned)
-Status: Phase 01 Complete, Phase 01.1 Complete
-Last activity: 2026-02-10 -- 01-04-PLAN.md complete (NVS persistence service)
+Plan: 1 of 4 in current phase (02-01 NimBLE init complete)
+Status: Executing Phase 02
+Last activity: 2026-02-10 -- 02-01-PLAN.md complete (NimBLE BLE init + GAP advertising)
 
-Progress: [██████░░░░] 35%
+Progress: [██████░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: 4 min
-- Total execution time: 0.55 hours
+- Total execution time: 0.68 hours
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [██████░░░░] 35%
 |-------|-------|-------|----------|
 | 01-foundation | 4 | 15 min | 4 min |
 | 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
+| 02-ble-core | 1 | 8 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (3min), 01.1-01 (2min), 01.1-02 (6min), 01.1-03 (2min), 01-04 (5min)
-- Trend: stable
+- Last 5 plans: 01.1-01 (2min), 01.1-02 (6min), 01.1-03 (2min), 01-04 (5min), 02-01 (8min)
+- Trend: slight increase (BLE requires full rebuild + sdkconfig regeneration)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -43,6 +44,7 @@ Progress: [██████░░░░] 35%
 | 01.1 | P01 | 2min | 2 tasks | 2 files |
 | 01.1 | P02 | 6min | 2 tasks | 9 files |
 | 01.1 | P03 | 2min | 2 tasks | 2 files |
+| 02 | P01 | 8min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -72,6 +74,10 @@ Recent decisions affecting current work:
 - [Phase 01-04]: NvsKbMotoristaState bitmap (3 bytes) for keyboard state instead of NvsJornadaState -- matches per-action-per-motorist model
 - [Phase 01-04]: StateChangeCallback on JornadaKeyboard for decoupled NVS auto-save on every processarAcao
 - [Phase 01-04]: NVS access always via NvsManager singleton -- never direct nvs_* calls elsewhere
+- [Phase 02-01]: ble_store_config_init() does not exist in ESP-IDF 5.3.1 NimBLE -- bond store auto-configures via CONFIG_BT_NIMBLE_NVS_PERSIST=y
+- [Phase 02-01]: Service UUIDs in scan response (not adv data) to stay under 31-byte limit
+- [Phase 02-01]: BLE init after systemInitialized=true to avoid blocking boot sequence
+- [Phase 02-01]: Must delete sdkconfig.esp32s3_idf when changing sdkconfig.defaults -- PlatformIO caches aggressively
 
 ### Pending Todos
 
@@ -90,5 +96,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 01-04-PLAN.md (NVS persistence). Phase 1 Foundation complete. Ready for Phase 2 (BLE Core).
-Resume file: .planning/ROADMAP.md (Phase 2 plans)
+Stopped at: Completed 02-01-PLAN.md (NimBLE BLE init + GAP advertising). Ready for 02-02 (GATT services).
+Resume file: .planning/phases/02-ble-core/02-02-PLAN.md
