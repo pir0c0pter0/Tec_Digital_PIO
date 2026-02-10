@@ -12,7 +12,7 @@ Transform the existing single-screen ESP32-S3 journey keypad into a multi-screen
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Partition table, screen manager, NVS persistence, and LVGL widget enablement
+- [x] **Phase 1: Foundation** - Partition table, screen manager, NVS persistence, and LVGL widget enablement
 - [x] **Phase 1.1: Screen Infrastructure Hardening** - Eliminate singletons, fix isolation bugs, prepare for configurable multi-screen (INSERTED) ✓ 2026-02-10
 - [ ] **Phase 2: BLE Core** - NimBLE stack, secure connections, GATT services, and BLE-to-UI event bridge
 - [ ] **Phase 3: Settings + Config Sync** - Settings screen with volume/brightness and bidirectional BLE config synchronization
@@ -39,10 +39,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - button_manager.cpp decomposition (1205 lines) may break existing journey/numpad behavior -- must preserve all existing callbacks and popup logic
 
 Plans:
-- [ ] 01-01: Partition table + sdkconfig + LVGL widget enablement
-- [ ] 01-02: Screen manager framework + StatusBar on lv_layer_top()
-- [ ] 01-03: JornadaScreen + NumpadScreen extraction from button_manager.cpp
-- [ ] 01-04: NVS persistence service (settings + journey state)
+- [x] 01-01: Partition table + sdkconfig + LVGL widget enablement
+- [x] 01-02: Screen manager framework + StatusBar on lv_layer_top()
+- [x] 01-03: JornadaScreen + NumpadScreen extraction from button_manager.cpp
+- [x] 01-04: NVS persistence service (settings + journey state)
 
 ### Phase 1.1: Screen Infrastructure Hardening (INSERTED)
 **Goal**: The screen infrastructure is hardened for multi-screen support: domain logic classes are per-screen instances (not singletons), all cross-screen state leaks are eliminated, ButtonManager destructor is safe for any lifecycle scenario, and the architecture supports future configurable screens (enable/disable at runtime, all active screens pre-loaded at boot).
@@ -161,7 +161,7 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|---------------|--------|-----------|
-| 1. Foundation | 0/4 | Not started | - |
+| 1. Foundation | 4/4 | ✓ Complete | 2026-02-10 |
 | 1.1 Screen Hardening | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. BLE Core | 0/4 | Not started | - |
 | 3. Settings + Config Sync | 0/3 | Not started | - |

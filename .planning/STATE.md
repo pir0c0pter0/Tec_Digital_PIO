@@ -5,33 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Rastrear estados de jornada de motoristas em tempo real com interface responsiva, comunicacao segura via BLE, e dados que nunca se perdem.
-**Current focus:** Phase 2 - BLE Core (Phase 1.1 complete)
+**Current focus:** Phase 2 - BLE Core (Phase 1 + 1.1 complete)
 
 ## Current Position
 
 Phase: 2 of 5 (BLE Core)
-Plan: 0 of N in current phase (phase 01.1 complete, phase 02 not yet planned)
-Status: Phase 01.1 Complete
-Last activity: 2026-02-10 -- 01.1-03-PLAN.md complete (2 tasks, 2 commits)
+Plan: 0 of N in current phase (phase 01 + 01.1 complete, phase 02 not yet planned)
+Status: Phase 01 Complete, Phase 01.1 Complete
+Last activity: 2026-02-10 -- 01-04-PLAN.md complete (NVS persistence service)
 
-Progress: [██████░░░░] 30%
+Progress: [██████░░░░] 35%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5 (01-03 pending hardware verify)
+- Total plans completed: 8
 - Average duration: 4 min
-- Total execution time: 0.30 hours
+- Total execution time: 0.55 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 3 | 10 min | 3 min |
-| 01.1-screen-infra-hardening | 2 | 8 min | 4 min |
+| 01-foundation | 4 | 15 min | 4 min |
+| 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 01-02 (5min), 01-03 (3min), 01.1-01 (2min), 01.1-02 (6min)
+- Last 5 plans: 01-03 (3min), 01.1-01 (2min), 01.1-02 (6min), 01.1-03 (2min), 01-04 (5min)
 - Trend: stable
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -39,8 +39,10 @@ Progress: [██████░░░░] 30%
 | 01 | P01 | 2min | 2 tasks | 4 files |
 | 01 | P02 | 5min | 2 tasks | 5 files |
 | 01 | P03 | 3min | 2 tasks | 5 files |
+| 01 | P04 | 5min | 2 tasks | 8 files |
 | 01.1 | P01 | 2min | 2 tasks | 2 files |
 | 01.1 | P02 | 6min | 2 tasks | 9 files |
+| 01.1 | P03 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -67,6 +69,9 @@ Recent decisions affecting current work:
 - [Phase 01.1]: Use temporary blank screen swap when destroying active screen to avoid LVGL undefined state
 - [Phase 01.1]: Lambda capture of self pointer for std::function callbacks; lv_obj user_data for LVGL C callbacks
 - [Phase 01.1]: Delete domain logic object before ButtonManager in screen destructor (dependency order)
+- [Phase 01-04]: NvsKbMotoristaState bitmap (3 bytes) for keyboard state instead of NvsJornadaState -- matches per-action-per-motorist model
+- [Phase 01-04]: StateChangeCallback on JornadaKeyboard for decoupled NVS auto-save on every processarAcao
+- [Phase 01-04]: NVS access always via NvsManager singleton -- never direct nvs_* calls elsewhere
 
 ### Pending Todos
 
@@ -74,7 +79,7 @@ None yet.
 
 ### Roadmap Evolution
 
-- Phase 1.1 inserted after Phase 1: Screen Infrastructure Hardening (URGENT) — Fix singleton fallback in event handlers, eliminate domain logic singletons (JornadaKeyboard/NumpadExample), fix static debounce sharing, fix destructor memory leak, prepare architecture for configurable multi-screen system
+- Phase 1.1 inserted after Phase 1: Screen Infrastructure Hardening (URGENT) -- completed 2026-02-10
 
 ### Blockers/Concerns
 
@@ -85,5 +90,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 01.1-02-PLAN.md (domain logic singleton elimination). Ready for 01.1-03-PLAN.md.
-Resume file: .planning/phases/01.1-screen-infrastructure-hardening/01.1-03-PLAN.md
+Stopped at: Completed 01-04-PLAN.md (NVS persistence). Phase 1 Foundation complete. Ready for Phase 2 (BLE Core).
+Resume file: .planning/ROADMAP.md (Phase 2 plans)
