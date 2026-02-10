@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Rastrear estados de jornada de motoristas em tempo real com interface responsiva, comunicacao segura via BLE, e dados que nunca se perdem.
-**Current focus:** Phase 3 - Settings + Config Sync (Phase 1 + 1.1 + 2 complete)
+**Current focus:** Phase 4 - OTA (Phase 1 + 1.1 + 2 + 3 complete)
 
 ## Current Position
 
-Phase: 3 of 5 (Settings + Config Sync)
-Plan: 2 of 3 in current phase (03-02 GATT Configuration Service complete)
-Status: Executing Phase 03
-Last activity: 2026-02-10 -- 03-02-PLAN.md complete (GATT Config Service + config event queue)
+Phase: 4 of 5 (OTA)
+Plan: 0 of ? in current phase (Phase 03 complete, Phase 04 not yet planned)
+Status: Phase 03 Complete -- Ready for Phase 04
+Last activity: 2026-02-10 -- 03-03-PLAN.md complete (Settings + Config Sync integration wiring)
 
-Progress: [█████████████░░░░░░░] 65%
+Progress: [██████████████░░░░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 5 min
-- Total execution time: 1.25 hours
+- Total execution time: 1.32 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [█████████████░░░░░░░] 65%
 | 01-foundation | 4 | 15 min | 4 min |
 | 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
 | 02-ble-core | 4 | 27 min | 7 min |
-| 03-settings | 2 | 15 min | 8 min |
+| 03-settings | 3 | 19 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (7min), 02-03 (8min), 02-04 (4min), 03-01 (7min), 03-02 (8min)
-- Trend: Consistent 7-8min for GATT service creation
+- Last 5 plans: 02-03 (8min), 02-04 (4min), 03-01 (7min), 03-02 (8min), 03-03 (4min)
+- Trend: Integration/wiring plans faster than creation plans
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -51,6 +51,7 @@ Progress: [█████████████░░░░░░░] 65%
 | 02 | P04 | 4min | 2 tasks | 5 files |
 | 03 | P01 | 7min | 2 tasks | 8 files |
 | 03 | P02 | 8min | 2 tasks | 5 files |
+| 03 | P03 | 4min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - [Phase 03-02]: Driver name BLE format: 1 byte id (1-3) + up to 32 bytes name; internally maps to 0-2
 - [Phase 03-02]: Out-of-range values rejected with BLE_ATT_ERR_VALUE_NOT_ALLOWED (0x13)
 - [Phase 03-02]: Time sync write-only (no read) -- timestamp flows one-way from app to device
+- [Phase 03-03]: No setStatusBar() for SettingsScreen -- uses direct LVGL widgets, not ButtonManager delegation
+- [Phase 03-03]: Config event queue init inside BLE success block -- queue only needed if BLE active
+- [Phase 03-03]: Both journey and config modules called in SUBSCRIBE handler -- each self-filters by attr_handle
 
 ### Pending Todos
 
@@ -119,5 +123,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 03-02-PLAN.md (GATT Configuration Service + config event queue). Phase 03 in progress (2 of 3 plans done).
-Resume file: .planning/phases/03-settings/03-03-PLAN.md
+Stopped at: Completed 03-03-PLAN.md (Settings + Config Sync integration). Phase 03 complete (3 of 3 plans done). Ready for Phase 04.
+Resume file: .planning/phases/04-ota/ (phase not yet planned)
