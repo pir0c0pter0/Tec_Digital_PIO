@@ -5,32 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Rastrear estados de jornada de motoristas em tempo real com interface responsiva, comunicacao segura via BLE, e dados que nunca se perdem.
-**Current focus:** Phase 1 - Foundation
+**Current focus:** Phase 1.1 - Screen Infrastructure Hardening
 
 ## Current Position
 
-Phase: 1 of 5 (Foundation)
-Plan: 3 of 4 in current phase
-Status: Checkpoint (hardware verification pending)
-Last activity: 2026-02-09 -- 01-03-PLAN.md Tasks 1-2 complete, Task 3 checkpoint pending
+Phase: 1.1 of 5 (Screen Infrastructure Hardening)
+Plan: 1 of 3 in current phase (01.1-01 complete)
+Status: In Progress
+Last activity: 2026-02-10 -- 01.1-01-PLAN.md complete (2 tasks, 2 commits)
 
-Progress: [████░░░░░░] 15%
+Progress: [████░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3 (01-03 pending hardware verify)
+- Total plans completed: 4 (01-03 pending hardware verify)
 - Average duration: 3 min
-- Total execution time: 0.17 hours
+- Total execution time: 0.20 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 3 | 10 min | 3 min |
+| 01.1-screen-infra-hardening | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2min), 01-02 (5min), 01-03 (3min)
+- Last 5 plans: 01-01 (2min), 01-02 (5min), 01-03 (3min), 01.1-01 (2min)
 - Trend: stable
 
 | Phase | Plan | Duration | Tasks | Files |
@@ -38,6 +39,7 @@ Progress: [████░░░░░░] 15%
 | 01 | P01 | 2min | 2 tasks | 4 files |
 | 01 | P02 | 5min | 2 tasks | 5 files |
 | 01 | P03 | 3min | 2 tasks | 5 files |
+| 01.1 | P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -60,10 +62,16 @@ Recent decisions affecting current work:
 - StatusBar on lv_layer_top() with IScreenManager* for loose coupling
 - [Phase 01]: Wrap existing JornadaKeyboard/NumpadExample rather than rewrite for v1.x behavior preservation
 - [Phase 01]: Static allocation for screens and StatusBar in main.cpp (no heap for embedded reliability)
+- [Phase 01.1]: Replace singleton fallback with ESP_LOGE + return to enforce strict screen isolation
+- [Phase 01.1]: Use temporary blank screen swap when destroying active screen to avoid LVGL undefined state
 
 ### Pending Todos
 
 None yet.
+
+### Roadmap Evolution
+
+- Phase 1.1 inserted after Phase 1: Screen Infrastructure Hardening (URGENT) — Fix singleton fallback in event handlers, eliminate domain logic singletons (JornadaKeyboard/NumpadExample), fix static debounce sharing, fix destructor memory leak, prepare architecture for configurable multi-screen system
 
 ### Blockers/Concerns
 
@@ -73,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-09
-Stopped at: 01-03-PLAN.md Tasks 1-2 complete. Task 3 (checkpoint:human-verify) requires hardware flash and verification.
-Resume file: .planning/phases/01-foundation/01-03-PLAN.md (resume at Task 3)
+Last session: 2026-02-10
+Stopped at: Completed 01.1-01-PLAN.md (ButtonManager hardening). Ready for 01.1-02-PLAN.md.
+Resume file: .planning/phases/01.1-screen-infrastructure-hardening/01.1-02-PLAN.md
