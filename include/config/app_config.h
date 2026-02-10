@@ -279,6 +279,10 @@ extern "C" {
 #define NVS_NS_JORNADA          "jornada"
 #define NVS_KEY_VOLUME          "volume"
 #define NVS_KEY_BRIGHTNESS      "brightness"
+#define NVS_KEY_DRIVER_PREFIX   "drv_"
+#define NVS_KEY_DRIVER_0        "drv_0"
+#define NVS_KEY_DRIVER_1        "drv_1"
+#define NVS_KEY_DRIVER_2        "drv_2"
 #define NVS_JORNADA_VERSION     1
 
 // ============================================================================

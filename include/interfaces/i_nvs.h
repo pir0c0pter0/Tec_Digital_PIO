@@ -94,6 +94,27 @@ public:
      * @return true se limpo com sucesso
      */
     virtual bool clearJornadaState(uint8_t motoristId) = 0;
+
+    // ========================================================================
+    // Nomes de motoristas
+    // ========================================================================
+
+    /**
+     * Salva nome de um motorista no NVS
+     * @param driverId ID do motorista (0-2)
+     * @param name Nome null-terminated (max 32 bytes incluindo null)
+     * @return true se salvo com sucesso
+     */
+    virtual bool saveDriverName(uint8_t driverId, const char* name) = 0;
+
+    /**
+     * Carrega nome de um motorista do NVS
+     * @param driverId ID do motorista (0-2)
+     * @param name Buffer para receber o nome
+     * @param maxLen Tamanho maximo do buffer
+     * @return true se carregado com sucesso (false se nao encontrado)
+     */
+    virtual bool loadDriverName(uint8_t driverId, char* name, size_t maxLen) = 0;
 };
 
 extern "C" {
@@ -105,6 +126,8 @@ bool nvs_manager_save_volume(uint8_t volume);
 uint8_t nvs_manager_load_volume(uint8_t default_val);
 bool nvs_manager_save_brightness(uint8_t brightness);
 uint8_t nvs_manager_load_brightness(uint8_t default_val);
+bool nvs_manager_save_driver_name(uint8_t driver_id, const char* name);
+bool nvs_manager_load_driver_name(uint8_t driver_id, char* name, size_t max_len);
 
 #ifdef __cplusplus
 }

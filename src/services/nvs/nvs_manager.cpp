@@ -319,6 +319,80 @@ bool NvsManager::clearJornadaState(uint8_t motoristId) {
 }
 
 // ============================================================================
+// NOMES DE MOTORISTAS
+// ============================================================================
+
+bool NvsManager::saveDriverName(uint8_t driverId, const char* name) {
+    if (!initialized_ || !name) return false;
+    if (driverId >= MAX_MOTORISTAS) {
+        ESP_LOGE(TAG, "driverId invalido: %d (max: %d)", driverId, MAX_MOTORISTAS - 1);
+        return false;
+    }
+
+    if (xSemaphoreTake(mutex_, portMAX_DELAY) != pdTRUE) return false;
+
+    nvs_handle_t handle;
+    bool ok = false;
+
+    if (openHandle(NVS_NS_SETTINGS, NVS_READWRITE, &handle)) {
+        // Chave: "drv_X" onde X = driverId (0-2)
+        char key[8];
+        snprintf(key, sizeof(key), NVS_KEY_DRIVER_PREFIX "%d", driverId);
+
+        esp_err_t err = nvs_set_str(handle, key, name);
+        if (err == ESP_OK) {
+            err = nvs_commit(handle);
+            ok = (err == ESP_OK);
+        }
+        if (!ok) {
+            ESP_LOGE(TAG, "Falha ao salvar nome motorista %d: %s", driverId, esp_err_to_name(err));
+        } else {
+            ESP_LOGI(TAG, "Nome motorista %d salvo: '%s'", driverId, name);
+        }
+        nvs_close(handle);
+    }
+
+    xSemaphoreGive(mutex_);
+    return ok;
+}
+
+bool NvsManager::loadDriverName(uint8_t driverId, char* name, size_t maxLen) {
+    if (!initialized_ || !name || maxLen == 0) return false;
+    if (driverId >= MAX_MOTORISTAS) {
+        ESP_LOGE(TAG, "driverId invalido: %d (max: %d)", driverId, MAX_MOTORISTAS - 1);
+        return false;
+    }
+
+    if (xSemaphoreTake(mutex_, portMAX_DELAY) != pdTRUE) return false;
+
+    nvs_handle_t handle;
+    bool ok = false;
+
+    if (openHandle(NVS_NS_SETTINGS, NVS_READONLY, &handle)) {
+        char key[8];
+        snprintf(key, sizeof(key), NVS_KEY_DRIVER_PREFIX "%d", driverId);
+
+        size_t requiredLen = maxLen;
+        esp_err_t err = nvs_get_str(handle, key, name, &requiredLen);
+
+        if (err == ESP_ERR_NVS_NOT_FOUND) {
+            ESP_LOGI(TAG, "Nome motorista %d nao encontrado no NVS", driverId);
+            name[0] = '\0';
+        } else if (err != ESP_OK) {
+            ESP_LOGW(TAG, "Erro ao ler nome motorista %d: %s", driverId, esp_err_to_name(err));
+            name[0] = '\0';
+        } else {
+            ok = true;
+            ESP_LOGD(TAG, "Nome motorista %d carregado: '%s'", driverId, name);
+        }
+        nvs_close(handle);
+    }
+
+    xSemaphoreGive(mutex_);
+    return ok;
+}
+
+// ============================================================================
 // INTERFACE C
 // ============================================================================
 
@@ -342,6 +416,14 @@ bool nvs_manager_save_brightness(uint8_t brightness) {
 
 uint8_t nvs_manager_load_brightness(uint8_t default_val) {
     return NvsManager::getInstance()->loadBrightness(default_val);
+}
+
+bool nvs_manager_save_driver_name(uint8_t driver_id, const char* name) {
+    return NvsManager::getInstance()->saveDriverName(driver_id, name);
+}
+
+bool nvs_manager_load_driver_name(uint8_t driver_id, char* name, size_t max_len) {
+    return NvsManager::getInstance()->loadDriverName(driver_id, name, max_len);
 }
 
 } // extern "C"

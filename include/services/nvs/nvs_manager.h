@@ -63,6 +63,8 @@ public:
     bool saveJornadaState(uint8_t motoristId, const void* state, size_t size) override;
     bool loadJornadaState(uint8_t motoristId, void* state, size_t size) override;
     bool clearJornadaState(uint8_t motoristId) override;
+    bool saveDriverName(uint8_t driverId, const char* name) override;
+    bool loadDriverName(uint8_t driverId, char* name, size_t maxLen) override;
 
 private:
     NvsManager();
