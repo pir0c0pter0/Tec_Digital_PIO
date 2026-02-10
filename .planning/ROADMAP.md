@@ -94,7 +94,7 @@ Plans:
 **Goal**: Users can adjust volume and brightness from the touchscreen settings screen or from a connected mobile app via BLE, with changes instantly reflected on both sides and persisted across reboots.
 **Depends on**: Phase 1 (screen manager for SettingsScreen), Phase 2 (BLE for config characteristics)
 **Requirements**: CFG-01, CFG-02, CFG-03, CFG-04, CFG-05, GATT-05, GATT-06, GATT-07, NVS-04
-**Estimated plans**: 3
+**Plans:** 3 plans
 **Success Criteria** (what must be TRUE):
   1. User can open the Settings screen from the menu, adjust volume via slider (0-21) and hear the change immediately, and adjust brightness via slider (0-100%) and see the backlight change in real time
   2. Settings screen displays current firmware version, device uptime, and free memory
@@ -107,9 +107,9 @@ Plans:
 - GATT write validation must reject out-of-range values (volume > 21, brightness > 100) to prevent undefined behavior
 
 Plans:
-- [ ] 03-01: SettingsScreen UI (volume slider, brightness slider, system info)
-- [ ] 03-02: GATT Configuration Service (volume, brightness, driver names, time sync)
-- [ ] 03-03: Bidirectional sync (local UI <-> BLE) + NVS persistence of all config
+- [ ] 03-01-PLAN.md -- SettingsScreen UI (volume/brightness sliders, system info, back button) + NVS driver name persistence
+- [ ] 03-02-PLAN.md -- GATT Configuration Service (volume, brightness, driver names, time sync) + config event queue
+- [ ] 03-03-PLAN.md -- Bidirectional sync wiring: main.cpp integration + ble_service.cpp subscription routing + menu cycling
 
 ### Phase 4: OTA
 **Goal**: Fleet operators can update device firmware wirelessly via BLE from a mobile app, with progress indication, integrity verification, and automatic rollback if the new firmware fails to boot -- no device is ever bricked by a bad update.
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 4 -> 5
 | 1. Foundation | 4/4 | ✓ Complete | 2026-02-10 |
 | 1.1 Screen Hardening | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. BLE Core | 4/4 | ✓ Complete (human verify pending) | 2026-02-10 |
-| 3. Settings + Config Sync | 0/3 | Not started | - |
+| 3. Settings + Config Sync | 0/3 | Planned | - |
 | 4. OTA | 0/3 | Not started | - |
 | 5. Polish | 0/3 | Not started | - |
 
