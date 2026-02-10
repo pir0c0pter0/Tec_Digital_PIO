@@ -54,12 +54,16 @@
 #include "services/ble/ble_service.h"
 #include "services/ble/ble_event_queue.h"
 #include "services/ble/gatt/gatt_journey.h"
+#include "services/ble/gatt/gatt_config.h"
 
 // Nova arquitetura de telas
 #include "ui/screen_manager.h"
 #include "ui/widgets/status_bar.h"
 #include "ui/screens/jornada_screen.h"
 #include "ui/screens/numpad_screen.h"
+#include "ui/screens/settings_screen.h"
+
+#include <sys/time.h>
 
 // ============================================================================
 // TAG DE LOG
@@ -81,6 +85,7 @@ static StatusBar statusBar;
 // Telas (alocacao estatica)
 static JornadaScreen jornadaScreen;
 static NumpadScreen numpadScreen;
+static SettingsScreen settingsScreen;
 
 // Ponteiro para screen manager (para uso no loop)
 static ScreenManagerImpl* screenMgr = nullptr;
@@ -153,6 +158,55 @@ static void onBleEvent(const BleEvent& evt) {
 }
 
 // ============================================================================
+// HANDLER DE EVENTOS DE CONFIGURACAO BLE (chamado do system_task -- LVGL-safe)
+// ============================================================================
+
+static void onConfigEvent(const ConfigEvent& evt) {
+    auto* nvsMgr = NvsManager::getInstance();
+
+    switch (evt.type) {
+        case CONFIG_EVT_VOLUME: {
+            ESP_LOGI(TAG, "Config BLE: volume=%d", evt.value_u8);
+            // 1. Aplica no hardware
+            setAudioVolume(evt.value_u8);
+            // 2. Persiste no NVS
+            nvsMgr->saveVolume(evt.value_u8);
+            // 3. Notifica cliente BLE (echo back)
+            notify_config_volume();
+            // 4. Atualiza SettingsScreen UI se ativa
+            if (screenMgr && screenMgr->getCurrentScreen() == ScreenType::SETTINGS) {
+                settingsScreen.updateVolumeSlider(evt.value_u8);
+            }
+            break;
+        }
+        case CONFIG_EVT_BRIGHTNESS: {
+            ESP_LOGI(TAG, "Config BLE: brightness=%d", evt.value_u8);
+            bsp_display_brightness_set(evt.value_u8);
+            nvsMgr->saveBrightness(evt.value_u8);
+            notify_config_brightness();
+            if (screenMgr && screenMgr->getCurrentScreen() == ScreenType::SETTINGS) {
+                settingsScreen.updateBrightnessSlider(evt.value_u8);
+            }
+            break;
+        }
+        case CONFIG_EVT_DRIVER_NAME: {
+            ESP_LOGI(TAG, "Config BLE: driver %d name='%s'", evt.driver_id, evt.name);
+            nvsMgr->saveDriverName(evt.driver_id, evt.name);
+            break;
+        }
+        case CONFIG_EVT_TIME_SYNC: {
+            ESP_LOGI(TAG, "Config BLE: time sync=%lu", (unsigned long)evt.value_u32);
+            struct timeval tv = {
+                .tv_sec = (time_t)evt.value_u32,
+                .tv_usec = 0,
+            };
+            settimeofday(&tv, NULL);
+            break;
+        }
+    }
+}
+
+// ============================================================================
 // TASK PRINCIPAL DO SISTEMA
 // ============================================================================
 
@@ -211,10 +265,14 @@ static void system_task(void *arg) {
     screenMgr->registerScreen(&jornadaScreen);
     screenMgr->registerScreen(&numpadScreen);
 
+    // Registra SettingsScreen
+    screenMgr->registerScreen(&settingsScreen);
+
     // Pre-cria todas as telas no boot para troca instantanea
     // (evita lag na primeira navegacao)
     jornadaScreen.create();
     numpadScreen.create();
+    settingsScreen.create();
 
     // Conecta StatusBar as telas via metodos per-screen (sem singleton)
     numpadScreen.setStatusBar(&statusBar);
@@ -235,6 +293,9 @@ static void system_task(void *arg) {
     } else {
         ESP_LOGI(TAG, "BLE inicializado - advertising...");
         statusBar.setBleStatus(BleStatus::ADVERTISING);
+
+        // Inicializa fila de eventos de configuracao
+        config_event_queue_init();
     }
 
     ESP_LOGI(TAG, "=================================");
@@ -268,6 +329,9 @@ static void system_task(void *arg) {
 
         // Processa eventos BLE (ponte thread-safe NimBLE -> UI)
         ble_process_events(onBleEvent);
+
+        // Processa eventos de configuracao BLE
+        config_process_events(onConfigEvent);
 
         // Atualiza tela atual via ScreenManager
         if (screenMgr) {
