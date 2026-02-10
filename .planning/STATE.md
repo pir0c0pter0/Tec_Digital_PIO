@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 4 of 5 (OTA)
-Plan: 2 of 3 in current phase
-Status: Executing Phase 04 -- Plan 02 complete
-Last activity: 2026-02-10 -- 04-02-PLAN.md complete (OTA service core: Wi-Fi, HTTP server, state machine, OtaScreen)
+Plan: 3 of 3 in current phase
+Status: Phase 04 code-complete -- Plan 03 pending hardware verification (checkpoint)
+Last activity: 2026-02-10 -- 04-03-PLAN.md Task 1 complete (self-test, navigation lock, main.cpp OTA integration). Task 2 = hardware checkpoint.
 
-Progress: [████████████████░░░░] 80%
+Progress: [█████████████████░░░] 85%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 5 min
-- Total execution time: 1.47 hours
+- Total execution time: 1.53 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [████████████████░░░░] 80%
 | 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
 | 02-ble-core | 4 | 27 min | 7 min |
 | 03-settings | 3 | 19 min | 6 min |
-| 04-ota | 2 | 9 min | 5 min |
+| 04-ota | 3 | 13 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (7min), 03-02 (8min), 03-03 (4min), 04-01 (4min), 04-02 (5min)
-- Trend: OTA plans maintaining fast pace (~5min avg)
+- Last 5 plans: 03-02 (8min), 03-03 (4min), 04-01 (4min), 04-02 (5min), 04-03 (4min)
+- Trend: OTA plans consistently fast (~4min avg)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -55,6 +55,7 @@ Progress: [████████████████░░░░] 80%
 | 03 | P03 | 4min | 3 tasks | 4 files |
 | 04 | P01 | 4min | 2 tasks | 9 files |
 | 04 | P02 | 5min | 2 tasks | 8 files |
+| 04 | P03 | 4min | 1 task | 7 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,10 @@ Recent decisions affecting current work:
 - [Phase 04-02]: OTA progress queue uses xQueueOverwrite (size 1) -- latest-event-wins without backpressure
 - [Phase 04-02]: OtaScreen follows SettingsScreen pattern (direct LVGL widgets, no ButtonManager, no interactive elements)
 - [Phase 04-02]: Lambda callbacks in OtaService process handlers capture singleton pointer for state transitions
+- [Phase 04-03]: esp_task_wdt_reconfigure (not init) for self-test watchdog -- WDT already initialized by ESP-IDF, reconfigure sets 60s timeout
+- [Phase 04-03]: Navigation lock added to IScreenManager interface (pure virtual) -- StatusBar checks lock via IScreenManager pointer without casting
+- [Phase 04-03]: OtaScreen not in normal screen cycle -- accessed only via BLE provisioning trigger, menu button skips it
+- [Phase 04-03]: OTA progress uses setProgressCallback with static function pointer -- C compatible, no lambda captures needed
 
 ### Pending Todos
 
@@ -137,5 +142,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 04-02-PLAN.md (OTA service core: Wi-Fi STA, HTTP server, state machine, OtaScreen). Plan 2 of 3 in Phase 04.
-Resume file: .planning/phases/04-ota/04-03-PLAN.md
+Stopped at: Completed 04-03-PLAN.md Task 1 (self-test, navigation lock, main.cpp OTA integration). Task 2 = hardware verification checkpoint. Phase 04 code-complete.
+Resume file: .planning/phases/04-ota/04-03-PLAN.md (checkpoint: hardware verification)
