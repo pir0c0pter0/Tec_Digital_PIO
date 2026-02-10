@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 2 of 5 (BLE Core)
-Plan: 1 of 4 in current phase (02-01 NimBLE init complete)
+Plan: 2 of 4 in current phase (02-02 GATT services complete)
 Status: Executing Phase 02
-Last activity: 2026-02-10 -- 02-01-PLAN.md complete (NimBLE BLE init + GAP advertising)
+Last activity: 2026-02-10 -- 02-02-PLAN.md complete (GATT services: DIS + Journey + Diagnostics)
 
-Progress: [██████░░░░] 40%
+Progress: [██████░░░░] 43%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 4 min
-- Total execution time: 0.68 hours
+- Total execution time: 0.80 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [██████░░░░] 40%
 |-------|-------|-------|----------|
 | 01-foundation | 4 | 15 min | 4 min |
 | 01.1-screen-infra-hardening | 3 | 10 min | 3 min |
-| 02-ble-core | 1 | 8 min | 8 min |
+| 02-ble-core | 2 | 15 min | 7.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01.1-01 (2min), 01.1-02 (6min), 01.1-03 (2min), 01-04 (5min), 02-01 (8min)
-- Trend: slight increase (BLE requires full rebuild + sdkconfig regeneration)
+- Last 5 plans: 01.1-02 (6min), 01.1-03 (2min), 01-04 (5min), 02-01 (8min), 02-02 (7min)
+- Trend: stable (BLE GATT services add minimal overhead)
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -45,6 +45,7 @@ Progress: [██████░░░░] 40%
 | 01.1 | P02 | 6min | 2 tasks | 9 files |
 | 01.1 | P03 | 2min | 2 tasks | 2 files |
 | 02 | P01 | 8min | 2 tasks | 7 files |
+| 02 | P02 | 7min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 02-01]: Service UUIDs in scan response (not adv data) to stay under 31-byte limit
 - [Phase 02-01]: BLE init after systemInitialized=true to avoid blocking boot sequence
 - [Phase 02-01]: Must delete sdkconfig.esp32s3_idf when changing sdkconfig.defaults -- PlatformIO caches aggressively
+- [Phase 02-02]: Built-in ble_svc_dis for DIS (0x180A) -- no custom implementation, ESP-IDF 5.3.1 includes it
+- [Phase 02-02]: extern "C" wrapper for ble_svc_dis.h -- lacks C++ linkage guards unlike other NimBLE headers
+- [Phase 02-02]: C++ designated initializer field order must match struct declaration order (ble_gatt_chr_def)
 
 ### Pending Todos
 
@@ -96,5 +100,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 02-01-PLAN.md (NimBLE BLE init + GAP advertising). Ready for 02-02 (GATT services).
-Resume file: .planning/phases/02-ble-core/02-02-PLAN.md
+Stopped at: Completed 02-02-PLAN.md (GATT services: DIS + Journey + Diagnostics). Ready for 02-03 (notify manager or security).
+Resume file: .planning/phases/02-ble-core/02-03-PLAN.md
