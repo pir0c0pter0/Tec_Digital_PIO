@@ -914,26 +914,31 @@ void ButtonManager::stopStatusTimer() {
 // SISTEMA DE POPUP
 // ============================================================================
 
-void ButtonManager::showPopup(const char* title, const char* message, 
+lv_obj_t* ButtonManager::createPopupOverlay() {
+    lv_obj_t* overlay = lv_obj_create(screen);
+    lv_obj_set_size(overlay, SCREEN_WIDTH, GRID_AREA_HEIGHT);
+    lv_obj_align(overlay, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_set_style_bg_color(overlay, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(overlay, LV_OPA_70, LV_PART_MAIN);
+    lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+    return overlay;
+}
+
+void ButtonManager::showPopup(const char* title, const char* message,
                               PopupType type, bool showCancel,
                               std::function<void(PopupResult)> callback) {
-    
+
     if (activePopup) {
         closePopup();
     }
-    
+
     if (!bsp_display_lock(100)) return;
-    
+
     popupCallback = callback;
     lastPopupResult = POPUP_RESULT_NONE;
-    
-    // Overlay escuro na tela deste ButtonManager (nao lv_scr_act() — isolamento)
-    activePopup = lv_obj_create(screen);
-    lv_obj_set_size(activePopup, SCREEN_WIDTH, SCREEN_HEIGHT - STATUS_BAR_HEIGHT);
-    lv_obj_align(activePopup, LV_ALIGN_TOP_LEFT, 0, 0);
-    lv_obj_set_style_bg_color(activePopup, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(activePopup, LV_OPA_70, LV_PART_MAIN);
-    lv_obj_clear_flag(activePopup, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Overlay padronizado (respeita StatusBar)
+    activePopup = createPopupOverlay();
     
     // Caixa do popup
     lv_obj_t* popupBox = lv_obj_create(activePopup);

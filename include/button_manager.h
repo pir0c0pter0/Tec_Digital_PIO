@@ -291,6 +291,14 @@ public:
     void stopStatusTimer();
     
     // Sistema de popup
+    /**
+     * Cria overlay escuro para popup, respeitando a StatusBar.
+     * REGRA: Toda tela que precisar de popup customizado DEVE usar este metodo
+     * como parent. Garante tamanho e posicao corretos em todas as telas.
+     * @return Ponteiro para o overlay criado (filho do screen deste ButtonManager)
+     */
+    lv_obj_t* createPopupOverlay();
+
     void showPopup(const char* title, const char* message,
                   PopupType type = POPUP_INFO, bool showCancel = false,
                   std::function<void(PopupResult)> callback = nullptr);

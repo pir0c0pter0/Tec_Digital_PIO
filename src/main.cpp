@@ -157,6 +157,11 @@ static void system_task(void *arg) {
     screenMgr->registerScreen(&jornadaScreen);
     screenMgr->registerScreen(&numpadScreen);
 
+    // Pre-cria todas as telas no boot para troca instantanea
+    // (evita lag na primeira navegacao)
+    jornadaScreen.create();
+    numpadScreen.create();
+
     // Mostra tela inicial (Numpad, sem animacao)
     screenMgr->showInitialScreen(ScreenType::NUMPAD);
 

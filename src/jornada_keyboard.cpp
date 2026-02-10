@@ -609,12 +609,8 @@ void JornadaKeyboard::showMotoristaSelection(TipoAcao acao) {
     
     if (!bsp_display_lock(100)) return;
     
-    // Overlay escuro na tela do ButtonManager desta jornada (nao lv_scr_act — isolamento)
-    popupMotorista = lv_obj_create(btnManager->getScreen());
-    lv_obj_set_size(popupMotorista, SCREEN_WIDTH, SCREEN_HEIGHT);
-    lv_obj_set_style_bg_color(popupMotorista, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(popupMotorista, LV_OPA_70, LV_PART_MAIN);
-    lv_obj_clear_flag(popupMotorista, LV_OBJ_FLAG_SCROLLABLE);
+    // Overlay padronizado (respeita StatusBar)
+    popupMotorista = btnManager->createPopupOverlay();
     
     // Caixa do popup
     lv_obj_t* popupBox = lv_obj_create(popupMotorista);
