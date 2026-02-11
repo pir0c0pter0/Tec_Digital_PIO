@@ -117,15 +117,174 @@ All shared data in services is protected by FreeRTOS mutexes. The callback patte
 - `nvs_data`: 64KB (app settings — volume, brightness, driver names, journey state)
 - `spiffs`: 1MB (LittleFS — audio MP3s + splash PNG)
 
-### BLE GATT Services
+### BLE Communication Protocol (BLE-P2.0)
 
-| Service | UUID | Characteristics |
-|---------|------|----------------|
-| Device Info (SIG) | 0x180A | Manufacturer, Model, FW Version, HW Revision |
-| Journey (custom) | group 1 | State per driver (R/N), Time-in-state (R/N), Ignition (R/N) |
-| Configuration (custom) | group 2 | Volume (R/W/N), Brightness (R/W/N), Driver Name (R/W), Time Sync (W) |
-| Diagnostics (custom) | group 3 | Heap, Uptime, Queue Depth (R) |
-| OTA Provisioning (custom) | group 4 | Wi-Fi Creds (W), OTA Status (R/N), IP Address (R/N) |
+#### Security Model
+
+All communication uses **LE Secure Connections (Just Works)** with AES-128-CCM encryption.
+
+- **Pairing:** Peripheral (ESP32) initiates via `ble_gap_security_initiate()` 500ms after connection (timer delay allows Android to complete service discovery first)
+- **IO Capability:** `NO_INPUT_NO_OUTPUT` — no numeric comparison or passkey
+- **Bonding:** Enabled — keys persisted in NVS (namespace `nimble_bond` on default `nvs` partition)
+- **Key Distribution:** ENC + ID keys in both directions
+- **Re-pairing:** `BLE_GAP_EVENT_REPEAT_PAIRING` handler deletes old bond and retries
+- **MTU:** Preferred 512 bytes, negotiated after connection
+- **Connection Parameters (post-encryption):** 30-50ms interval, 0 slave latency, 4s supervision timeout
+
+#### Connection Lifecycle
+
+```
+1. App scans → finds "GS-Jornada-XXXX" (last 2 bytes of BT MAC)
+2. App connects → ESP32: BLE_GAP_EVENT_CONNECT → status=CONNECTED
+3. App discovers services → reads DIS (no encryption required)
+4. [500ms timer] → ESP32 calls ble_gap_security_initiate()
+5. Android receives pairing request → Just Works → auto-accept
+6. LE Secure Connections established → AES-128-CCM active
+7. ESP32: BLE_GAP_EVENT_ENC_CHANGE → status=SECURED
+8. ESP32 requests connection parameters (30-50ms, 4s timeout)
+9. App can now read/write encrypted custom characteristics
+```
+
+If the app attempts to read a custom characteristic before step 6, NimBLE returns `BLE_ATT_ERR_INSUFFICIENT_ENC` (0x0F).
+
+#### BLE Status Enum
+
+| Value | Name | Description |
+|-------|------|-------------|
+| 0 | DISCONNECTED | No connection, no advertising |
+| 1 | ADVERTISING | Advertising active, waiting for connection |
+| 2 | CONNECTED | Connected, encryption not yet established |
+| 3 | SECURED | Connected with LE Secure Connections (encrypted) |
+
+#### UUID Scheme
+
+Custom UUIDs follow the pattern: `0000XXXX-4A47-0000-4763-7365-0000000Y`
+- `XXXX` = service/characteristic short ID
+- `Y` = service group (1=Journey, 2=Config, 3=Diagnostics, 4=OTA Prov)
+- Note: `4A47` = "JG" (Jornada Getscale), `47637365` = "Gcse"
+
+#### GATT Services Overview
+
+| Service | UUID | Encryption | Characteristics |
+|---------|------|------------|----------------|
+| Device Info (SIG) | `0x180A` | None | Manufacturer, Model, FW Version, HW Revision, SW Revision (BLE-P2.0) |
+| Journey | `00000100-...01` | Required | Journey State (R/N), Ignition Status (R/N) |
+| Configuration | `00000200-...02` | Required | Volume (R/W/N), Brightness (R/W/N), Driver Name (R/W), Time Sync (W) |
+| Diagnostics | `00000300-...03` | Required | System Diagnostics (R) |
+| OTA Provisioning | `00000400-...04` | Required | Wi-Fi Credentials (W), OTA Status (R/N), IP Address (R/N) |
+
+#### Device Information Service (DIS) — No Encryption
+
+Standard SIG service `0x180A`. Readable **before** pairing for device identification.
+
+| Characteristic | Value |
+|---------------|-------|
+| Manufacturer Name | `Getscale Sistemas Embarcados` |
+| Model Number | `GS-Jornada` |
+| Firmware Revision | `1.0.0` (APP_VERSION_STRING) |
+| Hardware Revision | `ESP32-S3-R8` |
+| Software Revision | `BLE-P2.0` (BLE_PROTOCOL_VERSION) |
+
+#### Journey Service — `00000100-4A47-0000-4763-7365-00000001`
+
+**Journey State** — UUID: `00000101-...-01` | Flags: READ_ENC, NOTIFY
+
+Read returns 24 bytes (3 drivers x 8 bytes each), packed little-endian:
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0 | 1 | motorist_id | Driver ID (1-3) |
+| 1 | 1 | state | Journey state enum (0-6) |
+| 2 | 1 | active | 1=active, 0=inactive |
+| 3 | 1 | reserved | Alignment padding |
+| 4 | 4 | time_in_state | Time in current state (ms), uint32 LE |
+
+Repeats 3 times (driver 1 at offset 0, driver 2 at offset 8, driver 3 at offset 16).
+
+Journey state enum values:
+| Value | State | Portuguese |
+|-------|-------|-----------|
+| 0 | INACTIVE | Inativo |
+| 1 | DRIVING | Jornada (direcao) |
+| 2 | MANEUVERING | Manobra |
+| 3 | MEAL_BREAK | Refeicao |
+| 4 | WAITING | Espera |
+| 5 | UNLOADING | Descarga |
+| 6 | REFUELING | Abastecimento |
+
+**Ignition Status** — UUID: `00000102-...-01` | Flags: READ_ENC, NOTIFY
+
+Read returns 8 bytes, packed little-endian:
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0 | 1 | status | 1=ignition ON, 0=OFF |
+| 1 | 3 | reserved | Alignment padding |
+| 4 | 4 | duration_ms | Duration in current state (ms), uint32 LE |
+
+#### Configuration Service — `00000200-4A47-0000-4763-7365-00000002`
+
+**Volume** — UUID: `00000201-...-02` | Flags: READ_ENC, WRITE_ENC, NOTIFY
+
+- Read: 1 byte, range 0-21 (current volume from NVS)
+- Write: 1 byte, range 0-21 (values >21 return `BLE_ATT_ERR_VALUE_NOT_ALLOWED`)
+- Notify: 1 byte (sent when volume changes locally)
+
+**Brightness** — UUID: `00000202-...-02` | Flags: READ_ENC, WRITE_ENC, NOTIFY
+
+- Read: 1 byte, range 0-100 (current brightness percentage from NVS)
+- Write: 1 byte, range 0-100 (values >100 return `BLE_ATT_ERR_VALUE_NOT_ALLOWED`)
+- Notify: 1 byte (sent when brightness changes locally)
+
+**Driver Name** — UUID: `00000203-...-02` | Flags: READ_ENC, WRITE_ENC
+
+- Read: 99 bytes (3 drivers x 33 bytes each: 1 byte driver_id + 32 bytes name, null-padded)
+- Write: 2-33 bytes (1 byte driver_id [1-3] + 1-32 bytes name UTF-8). Driver ID on BLE is 1-based (1-3), mapped internally to 0-based (0-2).
+
+**Time Sync** — UUID: `00000204-...-02` | Flags: WRITE_ENC
+
+- Write-only: 4 bytes little-endian uint32 Unix timestamp (seconds since epoch). Value 0 is rejected.
+
+#### Diagnostics Service — `00000300-4A47-0000-4763-7365-00000003`
+
+**System Diagnostics** — UUID: `00000301-...-03` | Flags: READ_ENC
+
+Read returns 16 bytes, packed little-endian:
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0 | 4 | free_heap | Internal heap free (bytes), uint32 LE |
+| 4 | 4 | min_free_heap | Minimum free heap since boot (bytes), uint32 LE |
+| 8 | 4 | psram_free | PSRAM free (bytes), uint32 LE |
+| 12 | 4 | uptime_seconds | Uptime since boot (seconds), uint32 LE |
+
+#### OTA Provisioning Service — `00000400-4A47-0000-4763-7365-00000004`
+
+**Wi-Fi Credentials** — UUID: `00000401-...-04` | Flags: WRITE_ENC
+
+Write format (3-98 bytes):
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0 | 1 | ssid_len | SSID length (1-32) |
+| 1 | ssid_len | ssid | SSID bytes (UTF-8) |
+| 1+ssid_len | 1 | pwd_len | Password length (0-64) |
+| 2+ssid_len | pwd_len | password | Password bytes (UTF-8) |
+
+**OTA Status** — UUID: `00000402-...-04` | Flags: READ_ENC, NOTIFY
+
+Read/Notify returns 2 bytes:
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0 | 1 | state | OTA state machine value (0-11) |
+| 1 | 1 | error_code | Error code (0=no error) |
+
+OTA state values: 0=IDLE, 1=WIFI_CONNECTING, 2=WIFI_CONNECTED, 3=BLE_SHUTTING_DOWN, 4=HTTP_STARTING, 5=HTTP_READY, 6=RECEIVING, 7=VERIFYING, 8=WRITING, 9=REBOOTING, 10=ERROR, 11=ABORTED.
+
+**IP Address** — UUID: `00000403-...-04` | Flags: READ_ENC, NOTIFY
+
+Read/Notify returns 4 bytes: IPv4 address in network byte order (big-endian). Example: `192.168.1.100` = `0xC0A80164`.
 
 ### Audio Assets (data/)
 
@@ -147,6 +306,7 @@ All shared data in services is protected by FreeRTOS mutexes. The callback patte
 - **OTA flow:** BLE provisioning → Wi-Fi STA connect → BLE shutdown → HTTP server → firmware stream → SHA-256 verify → reboot → self-test → mark valid/rollback
 - **Navigation lock:** Screen switching disabled during OTA via IScreenManager::setNavigationLocked(). OtaScreen not in normal screen cycle.
 - **Self-test at boot:** After OTA reboot, ota_self_test() validates subsystems before marking firmware valid. 60s watchdog protects against hang.
+- **BLE security:** All custom characteristics require encrypted link (_ENC flags). DIS stays unencrypted for pre-pairing discovery. Peripheral initiates pairing via 500ms timer after connection. Never add _ENC to DIS.
 
 ## Hardware Pin Reference
 
