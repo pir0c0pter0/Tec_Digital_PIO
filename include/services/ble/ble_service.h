@@ -18,6 +18,7 @@
 #include "interfaces/i_ble.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/timers.h"
 
 // Forward declarations (NimBLE types)
 struct ble_gap_event;
@@ -83,6 +84,11 @@ private:
      */
     static void bleHostTask(void* param);
 
+    /**
+     * Callback do timer de seguranca (inicia pairing apos delay)
+     */
+    static void securityTimerCallback(TimerHandle_t timer);
+
     // ========================================================================
     // METODOS INTERNOS
     // ========================================================================
@@ -112,6 +118,7 @@ private:
     bool initialized_;
     uint8_t ownAddrType_;
     char deviceName_[32];
+    TimerHandle_t securityTimer_;
 };
 
 #endif // BLE_SERVICE_H

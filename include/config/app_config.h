@@ -321,7 +321,7 @@ extern "C" {
 #define BLE_TASK_STACK_SIZE             (8 * 1024)
 #define BLE_ADV_INTERVAL_MIN            0x0020  // 20 * 0.625ms = 12.5ms
 #define BLE_ADV_INTERVAL_MAX            0x0040  // 64 * 0.625ms = 40ms
-#define BLE_PROTOCOL_VERSION            "BLE-P1.0"
+#define BLE_PROTOCOL_VERSION            "BLE-P2.0"
 #define BLE_NOTIFICATION_MIN_INTERVAL_MS 100
 
 // ============================================================================

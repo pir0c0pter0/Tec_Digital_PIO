@@ -63,7 +63,8 @@ BleService::BleService()
     , statusCallback_(nullptr)
     , mutex_(nullptr)
     , initialized_(false)
-    , ownAddrType_(0) {
+    , ownAddrType_(0)
+    , securityTimer_(nullptr) {
     memset(deviceName_, 0, sizeof(deviceName_));
 }
 
@@ -174,7 +175,16 @@ bool BleService::init() {
     }
 
     // ========================================================================
-    // 9. Inicia task do host NimBLE
+    // 9. Cria timer de seguranca (one-shot, 500ms apos conexao)
+    // ========================================================================
+    securityTimer_ = xTimerCreate("sec_timer", pdMS_TO_TICKS(500),
+                                   pdFALSE, nullptr, securityTimerCallback);
+    if (securityTimer_ == nullptr) {
+        ESP_LOGW(TAG, "Falha ao criar timer de seguranca (pairing nao sera iniciado pelo peripheral)");
+    }
+
+    // ========================================================================
+    // 10. Inicia task do host NimBLE
     // ========================================================================
     nimble_port_freertos_init(bleHostTask);
 
@@ -217,6 +227,21 @@ void BleService::bleHostTask(void* param) {
     nimble_port_run();
     // nimble_port_run() so retorna quando nimble_port_stop() e chamado
     nimble_port_freertos_deinit();
+}
+
+// ============================================================================
+// SECURITY TIMER CALLBACK
+// ============================================================================
+
+void BleService::securityTimerCallback(TimerHandle_t timer) {
+    BleService* self = getInstance();
+    if (self->connHandle_ != 0) {
+        ESP_LOGI(TAG, "Iniciando seguranca (LE Secure Connections)...");
+        int rc = ble_gap_security_initiate(self->connHandle_);
+        if (rc != 0) {
+            ESP_LOGW(TAG, "Falha ao iniciar seguranca: %d", rc);
+        }
+    }
 }
 
 // ============================================================================
@@ -317,8 +342,10 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
             gatt_config_set_conn_handle(event->connect.conn_handle);
             ota_prov_set_conn_handle(event->connect.conn_handle);
 
-            // Seguranca sera iniciada pelo central (celular) quando necessario
-            // Nao chamamos ble_gap_security_initiate() para evitar conflito com nRF Connect
+            // Inicia seguranca apos 500ms (tempo para service discovery no Android)
+            if (self->securityTimer_ != nullptr) {
+                xTimerStart(self->securityTimer_, 0);
+            }
         } else {
             ESP_LOGW(TAG, "Falha na conexao: status=%d", event->connect.status);
             self->startAdvertisingInternal();
@@ -327,6 +354,10 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
     }
 
     case BLE_GAP_EVENT_DISCONNECT: {
+        // Parar timer de seguranca se pendente
+        if (self->securityTimer_ != nullptr) {
+            xTimerStop(self->securityTimer_, 0);
+        }
         ESP_LOGI(TAG, "Desconectado! razao=%d", event->disconnect.reason);
         self->connHandle_ = 0;
         self->currentMtu_ = 23;
@@ -349,6 +380,22 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
             ESP_LOGI(TAG, "Criptografia ativada (LE Secure Connections)");
             self->updateStatus(BleStatus::SECURED);
             ble_post_event(BleStatus::SECURED, event->enc_change.conn_handle);
+
+            // Solicitar connection parameters otimizados apos criptografia
+            struct ble_gap_upd_params params = {};
+            params.itvl_min = 24;             // 30ms  (24 * 1.25ms)
+            params.itvl_max = 40;             // 50ms  (40 * 1.25ms)
+            params.latency = 0;               // Sem slave latency (alimentado por veiculo)
+            params.supervision_timeout = 400;  // 4s    (400 * 10ms)
+            params.min_ce_len = 0;
+            params.max_ce_len = 0;
+
+            int rc = ble_gap_update_params(event->enc_change.conn_handle, &params);
+            if (rc != 0) {
+                ESP_LOGW(TAG, "Falha ao solicitar conn params: %d", rc);
+            } else {
+                ESP_LOGI(TAG, "Conn params solicitados: 30-50ms interval, 4s timeout");
+            }
         } else {
             ESP_LOGW(TAG, "Falha na criptografia: status=%d", event->enc_change.status);
         }
@@ -418,6 +465,22 @@ int BleService::gapEventHandler(struct ble_gap_event* event, void* arg) {
         break;
     }
 
+    case BLE_GAP_EVENT_CONN_UPDATE: {
+        ESP_LOGI(TAG, "Connection params atualizados: status=%d",
+                 event->conn_update.status);
+        if (event->conn_update.status != 0) {
+            ESP_LOGW(TAG, "Falha no update de conn params: %d",
+                     event->conn_update.status);
+        }
+        break;
+    }
+
+    case BLE_GAP_EVENT_CONN_UPDATE_REQ: {
+        // Aceitar qualquer pedido do central (Android)
+        ESP_LOGI(TAG, "Central solicitou update de conn params");
+        break;
+    }
+
     default:
         ESP_LOGD(TAG, "GAP event nao tratado: %d", event->type);
         break;
@@ -483,6 +546,13 @@ void BleService::shutdown() {
     ESP_LOGI(TAG, "Desligando BLE completamente (liberando SRAM)...");
     ESP_LOGI(TAG, "Heap livre interno ANTES: %lu bytes",
              (unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+
+    // 0. Para e deleta timer de seguranca
+    if (securityTimer_ != nullptr) {
+        xTimerStop(securityTimer_, 0);
+        xTimerDelete(securityTimer_, portMAX_DELAY);
+        securityTimer_ = nullptr;
+    }
 
     // 1. Para advertising
     ble_gap_adv_stop();
