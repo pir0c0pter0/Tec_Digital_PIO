@@ -1,5 +1,7 @@
 # Teclado de Jornada Digital
 
+**Author:** Pir0c0pter0 — pir0c0pter0000@gmail.com
+
 Sistema embarcado profissional para monitoramento de jornada de motoristas, desenvolvido com ESP32-S3 e interface touchscreen LVGL.
 
 ---
